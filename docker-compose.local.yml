@@ -15,8 +15,6 @@ services:
     container_name: karunia-frontend
     ports:
       - "5173:5173"
-    volumes:
-      - ./frontend:/app
     depends_on:
       - karunia-backend
     restart: unless-stopped
