@@ -1,0 +1,37 @@
+version: "3.8"
+
+services:
+  karunia-backend:
+    build: ./backend
+    container_name: karunia-backend
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
+
+  karunia-frontend:
+    build: ./frontend
+    container_name: karunia-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+    depends_on:
+      - karunia-backend
+    restart: unless-stopped
+
+  karunia-db:
+    container_name: karunia-db
+    image: postgres:15
+    environment:
+      POSTGRES_USER: umbughn
+      POSTGRES_PASSWORD: BDTux9JpzGMAQi1i
+      POSTGRES_DB: store_dashboard
+    ports:
+      - "5432:5432"
+    volumes:
+      - karunia_db_data:/var/lib/postgresql/data
+
+volumes:
+  karunia_db_data:
