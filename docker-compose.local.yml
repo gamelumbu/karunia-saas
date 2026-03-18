@@ -6,6 +6,8 @@ services:
     container_name: karunia-backend
     ports:
       - "3001:3000"
+    env_file:
+      - .env.local
     volumes:
       - ./backend:/app
     restart: unless-stopped
