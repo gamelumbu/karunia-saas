@@ -15,8 +15,8 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return "Web Saas Apk!"', () => {
-      expect(appController.getHello()).toBe('Web Saas Apk!');
+    it('should return "Web Saas Apk Umbu!"', () => {
+      expect(appController.getHello()).toBe('Web Saas Apk Umbu!');
     });
   });
 });

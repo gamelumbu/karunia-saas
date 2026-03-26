@@ -5,7 +5,6 @@ services:
     image: node:20-alpine
     container_name: karunia-backend
     working_dir: /app
-    command: sh -c "corepack enable && pnpm install && pnpm run start:dev"
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -18,8 +17,8 @@ services:
 
   karunia-frontend:
     image: node:20-alpine
+    container_name: karunia-frontend
     working_dir: /app
-    command: sh -c "corepack enable && pnpm install && pnpm dev --host"
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -29,6 +28,7 @@ services:
       - karunia-backend
 
   karunia-db:
+    container_name: karunia-db
     image: postgres:15
     environment:
       POSTGRES_USER: umbughn
