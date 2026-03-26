@@ -9,8 +9,8 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-RUN pnpm run build
+RUN pnpm build
 
-EXPOSE 3001
+EXPOSE 3000
 
 CMD ["node", "dist/main.js"]

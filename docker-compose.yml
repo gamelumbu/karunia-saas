@@ -2,27 +2,33 @@ version: "3.8"
 
 services:
   karunia-backend:
-    build: ./backend
+    image: node:20-alpine
     container_name: karunia-backend
-    ports:
-      - "3001:3000"
-    env_file:
-      - .env.local
+    working_dir: /app
+    command: sh -c "corepack enable && pnpm install && pnpm run start:dev"
     volumes:
       - ./backend:/app
-    restart: unless-stopped
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.local
+    depends_on:
+      - karunia-db
 
   karunia-frontend:
-    build: ./frontend
-    container_name: karunia-frontend
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "corepack enable && pnpm install && pnpm dev --host"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     ports:
       - "5173:5173"
     depends_on:
       - karunia-backend
-    restart: unless-stopped
 
   karunia-db:
-    container_name: karunia-db
     image: postgres:15
     environment:
       POSTGRES_USER: umbughn
