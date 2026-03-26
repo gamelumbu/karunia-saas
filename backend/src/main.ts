@@ -26,7 +26,7 @@ async function bootstrap() {
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('SaaS API')
-    .setDescription('Swagger untuk mengakses API App Karunia Saas')
+    .setDescription('API App Karunia SaaS')
     .setVersion('1.0')
     // .addBearerAuth(
     //   {
@@ -40,6 +40,6 @@ async function bootstrap() {
     .build();
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('docs', app, swaggerDocument);
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
 }
 bootstrap();
