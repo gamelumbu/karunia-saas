@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import { Tenant } from '../entities/master/tenant.entity';
 import { CreateTenantDto } from './dto/tenant/create-tenant.dto';
@@ -11,6 +12,8 @@ import {
   applyTenantFilter,
   getCurrentUser,
 } from '@/common/helper/tenant.helper';
+import { UpdateTenantDto } from './dto/tenant/update-tenant.dto';
+import { TenantTypeFilter } from '@/common/enum/TenantTypeFilter';
 
 @Injectable()
 export class TenantService {
@@ -19,14 +22,39 @@ export class TenantService {
     private readonly tenantRepo: Repository<Tenant>,
   ) {}
 
-  private async validateUniqueCode(code: string): Promise<void> {
+  private async validateUniqueCode(
+    code: string,
+    excludeId?: string,
+  ): Promise<void> {
+    if (!code) return;
+
     const existing = await this.tenantRepo.findOne({
       where: { code },
+      withDeleted: true,
     });
 
-    if (existing) {
+    if (existing && existing.id !== excludeId) {
+      if (existing.deleted_at) {
+        throw new BadRequestException(
+          'Code already used by a deleted tenant. Please restore instead.',
+        );
+      }
+
       throw new BadRequestException('Tenant code already exists');
     }
+  }
+
+  private async findTenantWithDeleted(id: string): Promise<Tenant> {
+    const tenant = await this.tenantRepo.findOne({
+      where: { id },
+      withDeleted: true,
+    });
+
+    if (!tenant) {
+      throw new NotFoundException(`Tenant with id "${id}" not found`);
+    }
+
+    return tenant;
   }
 
   async findAll(
@@ -35,6 +63,7 @@ export class TenantService {
     search = '',
     sortBy: string = 'created_at',
     sortOrder: 'ASC' | 'DESC' = 'DESC',
+    type: 'active' | 'deleted' | 'all' = 'active',
   ): Promise<{
     data: Tenant[];
     total: number;
@@ -60,6 +89,12 @@ export class TenantService {
       });
     }
 
+    if (type === TenantTypeFilter.DELETED) {
+      qb.withDeleted().andWhere('tenant.deleted_at IS NOT NULL');
+    } else if (type === TenantTypeFilter.ALL) {
+      qb.withDeleted();
+    }
+
     if (search) {
       qb.andWhere('LOWER(tenant.name) LIKE LOWER(:search)', {
         search: `%${search}%`,
@@ -83,5 +118,77 @@ export class TenantService {
 
     const tenant = this.tenantRepo.create(createTenant);
     return this.tenantRepo.save(tenant);
+  }
+
+  async findOne(id: string): Promise<Tenant> {
+    const tenant = await this.tenantRepo.findOne({
+      where: { id },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException(`Tenant with id "${id}" not found`);
+    }
+
+    return tenant;
+  }
+
+  async update(id: string, updateTenant: UpdateTenantDto): Promise<Tenant> {
+    const tenant = await this.tenantRepo.findOne({
+      where: { id },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException(`Tenant with id "${id}" not found`);
+    }
+    if (updateTenant.code && updateTenant.code !== tenant.code) {
+      await this.validateUniqueCode(updateTenant.code, id);
+    }
+    Object.assign(tenant, updateTenant);
+
+    return this.tenantRepo.save(tenant);
+  }
+
+  async softDelete(id: string): Promise<void> {
+    const result = await this.tenantRepo.softDelete(id);
+
+    if (result.affected === 0) {
+      throw new NotFoundException(`Tenant with id "${id}" not found`);
+    }
+  }
+
+  async restore(id: string): Promise<Tenant> {
+    const tenant = await this.findTenantWithDeleted(id);
+    if (!tenant.deleted_at) {
+      throw new BadRequestException('Tenant is not deleted');
+    }
+
+    await this.tenantRepo.restore(id);
+
+    const restored = await this.tenantRepo.findOne({
+      where: { id },
+    });
+    if (!restored) {
+      throw new NotFoundException(
+        `Tenant with id "${id}" not found after restore`,
+      );
+    }
+
+    return restored;
+  }
+
+  async hardDelete(id: string): Promise<void> {
+    const tenant = await this.findTenantWithDeleted(id);
+
+    if (!tenant.deleted_at) {
+      throw new BadRequestException(
+        'Tenant must be soft deleted before permanent deletion',
+      );
+    }
+
+    const result = await this.tenantRepo.delete(id);
+
+    if (result.affected === 0) {
+      throw new NotFoundException(`Tenant with id "${id}" not found`);
+    }
   }
 }

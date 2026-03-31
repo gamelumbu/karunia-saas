@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsNumber, IsString, IsIn } from 'class-validator';
+import { IsOptional, IsNumber, IsString, IsIn, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
+import { TenantTypeFilter } from '@/common/enum/TenantTypeFilter';
 
 export class PaginationTenantQueryDto {
   @ApiPropertyOptional({ description: 'Halaman saat ini' })
@@ -38,4 +39,13 @@ export class PaginationTenantQueryDto {
   @IsString()
   @IsIn(['ASC', 'DESC'])
   sortOrder?: 'ASC' | 'DESC';
+
+  @ApiPropertyOptional({
+    description: 'Filter data type',
+    enum: TenantTypeFilter,
+    default: TenantTypeFilter.ACTIVE,
+  })
+  @IsOptional()
+  @IsEnum(TenantTypeFilter)
+  type?: TenantTypeFilter;
 }

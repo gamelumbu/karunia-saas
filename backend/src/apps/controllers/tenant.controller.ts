@@ -1,9 +1,12 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
+  Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -16,6 +19,7 @@ import { Permissions } from '@/common/decorator/permission.decorator';
 import { PaginationTenantQueryDto } from '../services/dto/tenant/pagination.tenant.dto';
 import { Tenant } from '../entities/master/tenant.entity';
 import { PaginatedTenantResponseDto } from '../services/dto/tenant/pagination-response.dto';
+import { UpdateTenantDto } from '../services/dto/tenant/update-tenant.dto';
 
 @UseGuards(JwtAuthGuard, PermissionGuard)
 @Controller('tenant')
@@ -24,6 +28,7 @@ export class TenantController {
 
   @Get()
   @Permissions('tenant.read')
+  @HttpCode(HttpStatus.OK)
   async findAll(
     @Query() query: PaginationTenantQueryDto,
   ): Promise<PaginatedTenantResponseDto<Tenant>> {
@@ -33,6 +38,7 @@ export class TenantController {
       query.search ?? '',
       query.sortBy ?? 'created_at',
       query.sortOrder ?? 'DESC',
+      query.type ?? 'active',
     );
 
     const totalPages = Math.ceil(result.total / result.limit);
@@ -59,6 +65,65 @@ export class TenantController {
       success: true,
       message: 'Tenant created successfully',
       data: newTenant,
+    };
+  }
+
+  @Get('id')
+  @Permissions('tenant.read')
+  @HttpCode(HttpStatus.OK)
+  async findOne(@Param('id') id: string) {
+    const tenant = await this.tenantService.findOne(id);
+
+    return {
+      success: true,
+      message: 'Tenant retrieved successfully',
+      data: tenant,
+    };
+  }
+
+  @Patch(':id')
+  @Permissions('tenant.update')
+  async update(@Param('id') id: string, @Body() dto: UpdateTenantDto) {
+    const updated = await this.tenantService.update(id, dto);
+
+    return {
+      success: true,
+      message: 'Tenant updated successfully',
+      data: updated,
+    };
+  }
+
+  @Delete(':id')
+  @Permissions('tenant.delete')
+  async softDelete(@Param('id') id: string) {
+    await this.tenantService.softDelete(id);
+
+    return {
+      success: true,
+      message: 'Tenant deleted successfully',
+    };
+  }
+
+  @Patch(':id/restore')
+  @Permissions('tenant.restore')
+  async restore(@Param('id') id: string) {
+    const restored = await this.tenantService.restore(id);
+
+    return {
+      success: true,
+      message: 'Tenant restored successfully',
+      data: restored,
+    };
+  }
+
+  @Delete('permanent/:id')
+  @Permissions('tenant.delete')
+  async hardDelete(@Param('id') id: string) {
+    await this.tenantService.hardDelete(id);
+
+    return {
+      success: true,
+      message: 'Tenant deleted successfully',
     };
   }
 }
