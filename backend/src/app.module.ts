@@ -4,23 +4,18 @@ import { AppService } from './app.service';
 import { UserModule } from './apps/module/user.module';
 import { AuthModule } from './auth/auth.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AppDataSource } from './database/config/data-source';
 import { ConfigModule } from '@nestjs/config';
 import * as Joi from 'joi';
 import { TenantModule } from './apps/module/tenant.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { RequestContextInterceptor } from './common/context/request-context.interceptor';
+import { dataSourceOptions } from './database/config/data-source.config';
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      validationSchema: Joi.object({
-        JWT_SECRET: Joi.string().required(),
-        DB_HOST: Joi.string().required(),
-        DB_PORT: Joi.number().required(),
-      }),
     }),
-    TypeOrmModule.forRoot(AppDataSource.options),
+    TypeOrmModule.forRoot(dataSourceOptions),
     UserModule,
     AuthModule,
     TenantModule,
