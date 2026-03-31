@@ -4,17 +4,22 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { UserRole } from './user_role.entity';
+import { Tenant } from './tenant.entity';
 
-@Entity({ name: 'user', schema: 'master' })
+@Entity('master_users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column({ type: 'varchar', length: 255, unique: true })
-  username: string | undefined;
+  username: string;
 
   @Column({ type: 'varchar', length: 255, unique: true })
   email: string;
@@ -22,7 +27,7 @@ export class User {
   @Column({ type: 'varchar', length: 255 })
   password: string;
 
-  @Column({ type: 'int', default: StatusAktif.AKTIF})
+  @Column({ type: 'int', default: StatusAktif.ACTIVE })
   active_status: StatusAktif;
 
   @CreateDateColumn()
@@ -31,6 +36,13 @@ export class User {
   @UpdateDateColumn()
   updated_at: Date;
 
-  @DeleteDateColumn()
-  deleted_at: Date;
+  @DeleteDateColumn({ nullable: true })
+  deleted_at?: Date;
+
+  @OneToMany(() => UserRole, (userRole) => userRole.user)
+  user_roles: UserRole[];
+
+  @ManyToOne(() => Tenant, (tenant) => tenant.users)
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
 }

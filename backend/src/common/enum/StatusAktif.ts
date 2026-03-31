@@ -1,4 +1,4 @@
 export enum StatusAktif {
-  TIDAK_AKTIF = 0,
-  AKTIF = 1,
+  INACTIVE = 0,
+  ACTIVE = 1,
 }

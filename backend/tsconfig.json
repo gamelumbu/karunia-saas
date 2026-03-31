@@ -18,6 +18,7 @@
       "@/*": ["./src/*"]
     },
     "incremental": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "strictPropertyInitialization": false
   }
 }
