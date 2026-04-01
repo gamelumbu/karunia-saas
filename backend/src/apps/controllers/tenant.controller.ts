@@ -44,6 +44,7 @@ export class TenantController {
     const totalPages = Math.ceil(result.total / result.limit);
 
     return {
+      success: true,
       message: 'List Tenant successfully retrieved',
       data: result.data,
       pagination: {
@@ -123,7 +124,7 @@ export class TenantController {
 
     return {
       success: true,
-      message: 'Tenant deleted successfully',
+      message: 'Tenant permanent deleted successfully',
     };
   }
 }

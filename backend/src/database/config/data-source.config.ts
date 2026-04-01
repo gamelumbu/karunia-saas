@@ -2,7 +2,9 @@ import * as dotenv from 'dotenv';
 import { DataSource, DataSourceOptions } from 'typeorm';
 import { SeederOptions } from 'typeorm-extension';
 
-dotenv.config();
+dotenv.config({
+  path: '.env.local',
+});
 export const dataSourceOptions: DataSourceOptions & SeederOptions = {
   type: 'postgres',
   host: process.env.DB_HOST,

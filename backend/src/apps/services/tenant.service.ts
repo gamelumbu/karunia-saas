@@ -8,10 +8,6 @@ import { Tenant } from '../entities/master/tenant.entity';
 import { CreateTenantDto } from './dto/tenant/create-tenant.dto';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import {
-  applyTenantFilter,
-  getCurrentUser,
-} from '@/common/helper/tenant.helper';
 import { UpdateTenantDto } from './dto/tenant/update-tenant.dto';
 import { TenantTypeFilter } from '@/common/enum/TenantTypeFilter';
 
@@ -75,19 +71,7 @@ export class TenantService {
     if (!allowedSort.includes(sortBy)) {
       sortBy = 'created_at';
     }
-
-    const user = getCurrentUser();
-    if (!user) {
-      throw new ForbiddenException('Unauthorized');
-    }
-
     const qb = this.tenantRepo.createQueryBuilder('tenant');
-
-    if (!user.roles?.includes('super_admin')) {
-      qb.where('tenant.id = :tenantId', {
-        tenantId: user.tenant_id,
-      });
-    }
 
     if (type === TenantTypeFilter.DELETED) {
       qb.withDeleted().andWhere('tenant.deleted_at IS NOT NULL');
@@ -96,9 +80,13 @@ export class TenantService {
     }
 
     if (search) {
-      qb.andWhere('LOWER(tenant.name) LIKE LOWER(:search)', {
-        search: `%${search}%`,
-      });
+      const fields = ['tenant.name', 'tenant.code', 'tenant.domain'];
+      qb.andWhere(
+        `(
+          ${fields.map((f) => `${f} ILIKE :search`).join(' OR ')}
+        )`,
+        { search: `%${search}%` },
+      );
     }
 
     qb.orderBy(`tenant.${sortBy}`, sortOrder);

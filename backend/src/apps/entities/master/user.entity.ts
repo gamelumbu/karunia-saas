@@ -4,6 +4,7 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
@@ -13,21 +14,27 @@ import {
 import { UserRole } from './user_role.entity';
 import { Tenant } from './tenant.entity';
 
+@Index(['tenant_id', 'email'], { unique: true })
+@Index(['tenant_id', 'username'], { unique: true })
 @Entity('master_users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 255, unique: true })
+  @Column({ type: 'varchar', length: 255 })
   username: string;
 
-  @Column({ type: 'varchar', length: 255, unique: true })
+  @Column({ type: 'varchar', length: 255 })
   email: string;
 
   @Column({ type: 'varchar', length: 255 })
   password: string;
 
-  @Column({ type: 'int', default: StatusAktif.ACTIVE })
+  @Column({
+    type: 'enum',
+    enum: StatusAktif,
+    default: StatusAktif.ACTIVE,
+  })
   active_status: StatusAktif;
 
   @CreateDateColumn()
@@ -42,7 +49,12 @@ export class User {
   @OneToMany(() => UserRole, (userRole) => userRole.user)
   user_roles: UserRole[];
 
-  @ManyToOne(() => Tenant, (tenant) => tenant.users)
+  @Column()
+  tenant_id: string;
+
+  @ManyToOne(() => Tenant, (tenant) => tenant.users, {
+     onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'tenant_id' })
   tenant: Tenant;
 }

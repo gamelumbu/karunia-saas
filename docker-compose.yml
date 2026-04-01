@@ -13,10 +13,13 @@ services:
       - "3000:3000"
     environment:
       - CHOKIDAR_USEPOLLING=true
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     env_file:
       - .env.local
     depends_on:
       - karunia-db
+      - redis
 
   karunia-frontend:
     image: node:20-alpine
@@ -42,6 +45,12 @@ services:
       - "5432:5432"
     volumes:
       - karunia_db_data:/var/lib/postgresql/data
+  redis:
+    container_name: karunia-redis
+    image: redis:7
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
 
 volumes:
   karunia_db_data:

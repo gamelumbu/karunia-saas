@@ -1,4 +1,4 @@
-import { Tenant } from '@/apps/entities/master/tenant.entity';
+import { User } from '@/apps/entities/master/user.entity';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class PaginationMetaDto {
@@ -15,12 +15,12 @@ export class PaginationMetaDto {
   limit: number;
 }
 
-export class PaginatedTenantResponseDto<T> {
+export class PaginatedUserResponseDto<T> {
   success: boolean;
-  @ApiProperty({ example: 'List Tenant successfully retrieved' })
+  @ApiProperty({ example: 'List User successfully retrieved' })
   message: string;
 
-  @ApiProperty({ type: () => Tenant, isArray: true })
+  @ApiProperty({ type: () => User, isArray: true })
   data: T[];
 
   @ApiProperty({ type: PaginationMetaDto })
