@@ -13,7 +13,7 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get()
-//   @Permissions('user.read')
+  @Permissions('user.read')
   @HttpCode(HttpStatus.OK)
   async findAll(
     @Query() query: PaginationUserQueryDto,

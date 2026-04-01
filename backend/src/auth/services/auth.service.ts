@@ -14,16 +14,15 @@ export class AuthService {
   ) {}
 
   async validateUser(email: string, password: string) {
-    const user = await this.userRepository.findOne({
-      where: { email },
-      relations: [
-        'tenant',
-        'user_roles',
-        'user_roles.role',
-        'user_roles.role.role_permission',
-        'user_roles.role.role_permission.permission',
-      ],
-    });
+    const user = await this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.tenant', 'tenant')
+      .leftJoinAndSelect('user.user_roles', 'user_roles')
+      .leftJoinAndSelect('user_roles.role', 'role')
+      .leftJoinAndSelect('role.role_permission', 'role_permission')
+      .leftJoinAndSelect('role_permission.permission', 'permission')
+      .where('user.email = :email', { email })
+      .getOne();
 
     if (!user) {
       throw new UnauthorizedException('User not found');

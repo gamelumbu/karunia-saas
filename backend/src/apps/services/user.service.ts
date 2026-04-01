@@ -8,6 +8,7 @@ import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserTypeFilter } from '@/common/enum/UserTypeFilter';
 import { CreateUserDto } from './dto/users/create-user.dto';
+import { TenantScopeHelper } from '@/common/helper/tenant-scope.helper';
 
 @Injectable()
 export class UserService {
@@ -72,6 +73,7 @@ export class UserService {
     }
 
     const qb = this.userRepo.createQueryBuilder('user');
+    TenantScopeHelper.apply(qb, 'user');
     if (type === UserTypeFilter.DELETED) {
       qb.withDeleted().andWhere('user.deleted_at IS NOT NULL');
     } else if (type === UserTypeFilter.ALL) {
@@ -95,28 +97,28 @@ export class UserService {
     };
   }
 
-//   async create(createUser: CreateUserDto, currentUser: any): Promise<User> {
-//     await this.validateUniqueUsernameEmail(
-//       createUser.username,
-//       createUser.email,
-//     );
-//     const hashedPassword = await bcrypt.hash(createUser.password, 10);
+  //   async create(createUser: CreateUserDto, currentUser: any): Promise<User> {
+  //     await this.validateUniqueUsernameEmail(
+  //       createUser.username,
+  //       createUser.email,
+  //     );
+  //     const hashedPassword = await bcrypt.hash(createUser.password, 10);
 
-//     const user = this.userRepo.create({
-//       username: createUser.username,
-//       email: createUser.email,
-//       password: hashedPassword,
-//       tenant_id: currentUser.tenant_id,
-//     });
+  //     const user = this.userRepo.create({
+  //       username: createUser.username,
+  //       email: createUser.email,
+  //       password: hashedPassword,
+  //       tenant_id: currentUser.tenant_id,
+  //     });
 
-//     const savedUser = await this.userRepo.save(user);
+  //     const savedUser = await this.userRepo.save(user);
 
-//     // 4. Assign role
-//     await this.userRoleRepo.save({
-//       user_id: savedUser.id,
-//       role_id: createUser.role_id,
-//     });
+  //     // 4. Assign role
+  //     await this.userRoleRepo.save({
+  //       user_id: savedUser.id,
+  //       role_id: createUser.role_id,
+  //     });
 
-//     return savedUser;
-//   }
+  //     return savedUser;
+  //   }
 }
