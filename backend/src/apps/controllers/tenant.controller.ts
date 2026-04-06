@@ -69,7 +69,7 @@ export class TenantController {
     };
   }
 
-  @Get('id')
+  @Get(':id')
   @Permissions('tenant.read')
   @HttpCode(HttpStatus.OK)
   async findOne(@Param('id') id: string) {

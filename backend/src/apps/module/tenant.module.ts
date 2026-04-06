@@ -9,5 +9,6 @@ import { PermissionModule } from './permission.module';
   imports: [TypeOrmModule.forFeature([Tenant]), PermissionModule],
   providers: [TenantService,],
   controllers: [TenantController],
+  exports: [TypeOrmModule],
 })
 export class TenantModule {}

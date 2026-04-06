@@ -11,6 +11,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { UpdateTenantDto } from './dto/tenant/update-tenant.dto';
 import { TenantTypeFilter } from '@/common/enum/TenantTypeFilter';
 import { TenantScopeHelper } from '@/common/helper/tenant-scope.helper';
+import { RequestContextService } from '@/common/context/request-context.service';
 
 @Injectable()
 export class TenantService {
@@ -49,6 +50,20 @@ export class TenantService {
 
     if (!tenant) {
       throw new NotFoundException(`Tenant with id "${id}" not found`);
+    }
+
+    return tenant;
+  }
+
+  private async findTenantOrFail(id: string): Promise<Tenant> {
+    const isSuperAdmin = RequestContextService.isSuperAdmin();
+    const tenantId = RequestContextService.getTenantId();
+
+    const tenant = await this.tenantRepo.findOne({
+      where: isSuperAdmin ? { id } : { id: tenantId },
+    });
+    if (!tenant || tenant.deleted_at) {
+      throw new NotFoundException(`Tenant with id ${id} not found`);
     }
 
     return tenant;
@@ -111,15 +126,7 @@ export class TenantService {
   }
 
   async findOne(id: string): Promise<Tenant> {
-    const tenant = await this.tenantRepo.findOne({
-      where: { id },
-    });
-
-    if (!tenant) {
-      throw new NotFoundException(`Tenant with id "${id}" not found`);
-    }
-
-    return tenant;
+    return this.findTenantOrFail(id);
   }
 
   async update(id: string, updateTenant: UpdateTenantDto): Promise<Tenant> {

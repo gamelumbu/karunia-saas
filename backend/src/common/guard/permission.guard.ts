@@ -3,6 +3,7 @@ import {
   ExecutionContext,
   Injectable,
   ForbiddenException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PERMISSION_KEY } from '../decorator/permission.decorator';
@@ -11,6 +12,7 @@ import { RedisService } from '@/database/redis/redis.service';
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
+  private readonly CACHE_TTL = 300
   constructor(
     private reflector: Reflector,
     private permissionService: PermissionService,
@@ -36,16 +38,22 @@ export class PermissionGuard implements CanActivate {
       return true;
     }
 
-    const cacheKey = `user_permissions:${user.id}:${user.tenant_id}`;
+    const cacheKey = this.getCacheKey(user.id, user.tenant_id);
 
-    let userPermissions = await this.redisService.get<string[]>(cacheKey);
+    let userPermissions: string[];
+    try {
+      const cached = await this.redisService.get<string[]>(cacheKey);
+      userPermissions =
+        cached ??
+        (await this.permissionService.getUserPermissions(user.id)) ??
+        [];
 
-    if (!userPermissions) {
-      userPermissions = await this.permissionService.getUserPermissions(
-        user.id,
-      );
-      userPermissions = userPermissions || [];
-      await this.redisService.set(cacheKey, userPermissions, 300);
+      if (cached === null) {
+        await this.redisService.set(cacheKey, userPermissions, this.CACHE_TTL);
+      }
+    } catch {
+      userPermissions =
+        (await this.permissionService.getUserPermissions(user.id)) ?? [];
     }
     request.user.permissions = userPermissions;
 
@@ -62,5 +70,9 @@ export class PermissionGuard implements CanActivate {
     }
 
     return true;
+  }
+
+  private getCacheKey(userId: string, tenantId: string): string {
+    return `user_permissions:${userId}:${tenantId}`;
   }
 }

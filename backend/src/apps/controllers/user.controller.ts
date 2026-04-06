@@ -3,9 +3,13 @@ import { PermissionGuard } from '@/common/guard/permission.guard';
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -16,6 +20,7 @@ import { PaginatedUserResponseDto } from '../services/dto/users/pagination-respo
 import { Permissions } from '@/common/decorator/permission.decorator';
 import { User } from '../entities/master/user.entity';
 import { CreateUserDto } from '../services/dto/users/create-user.dto';
+import { UpdateUserDto } from '../services/dto/users/update-user.dto';
 
 @UseGuards(JwtAuthGuard, PermissionGuard)
 @Controller('user')
@@ -56,12 +61,70 @@ export class UserController {
   @Permissions('user.create')
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createUser: CreateUserDto) {
-    const newTenant = await this.userService.create(createUser);
+    const newUser = await this.userService.create(createUser);
 
     return {
       success: true,
-      message: 'Tenant created successfully',
-      data: newTenant,
+      message: 'User created successfully',
+      data: newUser,
+    };
+  }
+
+  @Get(':id')
+  @Permissions('user.read')
+  @HttpCode(HttpStatus.OK)
+  async findOne(@Param('id') id: string) {
+    const user = await this.userService.findOne(id);
+    return {
+      success: true,
+      message: 'User retrieved successfully',
+      data: user,
+    };
+  }
+
+  @Patch(':id')
+  @Permissions('user.update')
+  async update(@Param('id') id: string, @Body() userUpdate: UpdateUserDto) {
+    const updated = await this.userService.update(id, userUpdate);
+
+    return {
+      success: true,
+      message: 'Users updated successfully',
+      data: updated,
+    };
+  }
+
+  @Delete(':id')
+  @Permissions('user.delete')
+  async softDelete(@Param('id') id: string) {
+    await this.userService.softDelete(id);
+
+    return {
+      success: true,
+      message: 'User deleted successfully',
+    };
+  }
+
+  @Patch(':id/restore')
+  @Permissions('user.restore')
+  async restore(@Param('id') id: string) {
+    const restored = await this.userService.restore(id);
+
+    return {
+      success: true,
+      message: 'User restored successfully',
+      data: restored,
+    };
+  }
+
+  @Delete('permanent/:id')
+  @Permissions('user.delete')
+  async hardDelete(@Param('id') id: string) {
+    await this.userService.hardDelete(id);
+
+    return {
+      success: true,
+      message: 'User permanent deleted successfully',
     };
   }
 }
