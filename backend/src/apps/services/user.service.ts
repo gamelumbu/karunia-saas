@@ -9,6 +9,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { UserTypeFilter } from '@/common/enum/UserTypeFilter';
 import { CreateUserDto } from './dto/users/create-user.dto';
 import { TenantScopeHelper } from '@/common/helper/tenant-scope.helper';
+import * as bcrypt from 'bcrypt';
+import { RequestContextService } from '@/common/context/request-context.service';
 
 @Injectable()
 export class UserService {
@@ -22,22 +24,46 @@ export class UserService {
     email: string,
     excludeId?: string,
   ): Promise<void> {
-    if (!username) return;
-    if (!email) return;
+    const tenantId = RequestContextService.getTenantId();
 
-    const existing = await this.userRepo.findOne({
-      where: { username, email },
-      withDeleted: true,
-    });
+    if (username) {
+      const existingUsername = await this.userRepo
+        .createQueryBuilder('user')
+        .withDeleted()
+        .where('user.username = :username', { username })
+        .andWhere('user.tenant_id = :tenantId', { tenantId })
+        .andWhere(excludeId ? 'user.id != :excludeId' : '1=1', { excludeId })
+        .getOne();
 
-    if (existing && existing.id !== excludeId) {
-      if (existing.deleted_at) {
-        throw new BadRequestException(
-          'Username or Email already used by a deleted user data. Please restore instead.',
-        );
+      if (existingUsername) {
+        if (existingUsername.deleted_at) {
+          throw new BadRequestException(
+            'Username already used by deleted user. Please restore instead.',
+          );
+        }
+
+        throw new BadRequestException('Username already exists');
       }
+    }
 
-      throw new BadRequestException('User code already exists');
+    if (email) {
+      const existingEmail = await this.userRepo
+        .createQueryBuilder('user')
+        .withDeleted()
+        .where('user.email = :email', { email })
+        .andWhere('user.tenant_id = :tenantId', { tenantId })
+        .andWhere(excludeId ? 'user.id != :excludeId' : '1=1', { excludeId })
+        .getOne();
+
+      if (existingEmail) {
+        if (existingEmail.deleted_at) {
+          throw new BadRequestException(
+            'Email already used by deleted user. Please restore instead.',
+          );
+        }
+
+        throw new BadRequestException('Email already exists');
+      }
     }
   }
 
@@ -97,28 +123,31 @@ export class UserService {
     };
   }
 
-  //   async create(createUser: CreateUserDto, currentUser: any): Promise<User> {
-  //     await this.validateUniqueUsernameEmail(
-  //       createUser.username,
-  //       createUser.email,
-  //     );
-  //     const hashedPassword = await bcrypt.hash(createUser.password, 10);
+  async create(createUser: CreateUserDto): Promise<User> {
+    const { username, email, password } = createUser;
 
-  //     const user = this.userRepo.create({
-  //       username: createUser.username,
-  //       email: createUser.email,
-  //       password: hashedPassword,
-  //       tenant_id: currentUser.tenant_id,
-  //     });
+    await this.validateUniqueUsernameEmail(username, email);
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const currentUser = RequestContextService.getUser();
+    let tenantId: string;
 
-  //     const savedUser = await this.userRepo.save(user);
+    if (RequestContextService.isSuperAdmin()) {
+      if (!createUser.tenant_id) {
+        throw new BadRequestException(
+          'tenant_id is required for super_admin',
+        );
+      }
+      tenantId = createUser.tenant_id;
+    } else {
+      tenantId = currentUser.tenant_id;
+    }
 
-  //     // 4. Assign role
-  //     await this.userRoleRepo.save({
-  //       user_id: savedUser.id,
-  //       role_id: createUser.role_id,
-  //     });
+    const user = this.userRepo.create({
+      ...createUser,
+      password: hashedPassword,
+      tenant_id: tenantId,
+    });
 
-  //     return savedUser;
-  //   }
+    return await this.userRepo.save(user);
+  }
 }

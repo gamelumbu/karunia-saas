@@ -107,7 +107,7 @@ export class AuthService {
 
       const savedUser = await manager.save(user);
       const role = manager.create(Role, {
-        name: 'OWNER',
+        name: 'admin',
         tenant_id: savedTenant.id,
       });
 

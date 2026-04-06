@@ -23,8 +23,8 @@ export class CreateUserDto {
 
   @IsNotEmpty({ message: 'password is required' })
   @IsString({ message: 'password must be string' })
-  @ApiProperty({ example: ''})
-  password?: string;
+  @ApiProperty({ example: '' })
+  password: string;
 
   @Transform(({ value }) => {
     if (typeof value === 'string') {
@@ -35,13 +35,14 @@ export class CreateUserDto {
   @IsEnum(StatusAktif, {
     message: ({ value }) =>
       `active_status "${value}" is invalid. Allowed: ${Object.keys(StatusAktif)
-    .filter((k) => isNaN(Number(k)))
-    .join(', ')}`,
+        .filter((k) => isNaN(Number(k)))
+        .join(', ')}`,
   })
-  @ApiPropertyOptional({ example: ''})
+  @ApiPropertyOptional({ example: '' })
   active_status: StatusAktif;
 
-  @IsNotEmpty({ message: 'tenant_id is required' })
-  @IsUUID('4', { message: 'tenant_id harus berupa UUID yang valid' })
-  tenant_id: string;
+  @ApiPropertyOptional({ example: '' })
+  @IsOptional()
+  @IsUUID('4', { message: 'tenant_id must be a valid UUID' })
+  tenant_id?: string;
 }

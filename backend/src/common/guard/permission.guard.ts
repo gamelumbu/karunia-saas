@@ -36,25 +36,29 @@ export class PermissionGuard implements CanActivate {
       return true;
     }
 
-    const cacheKey = `user_permissions:${user.id}`;
+    const cacheKey = `user_permissions:${user.id}:${user.tenant_id}`;
+
     let userPermissions = await this.redisService.get<string[]>(cacheKey);
 
     if (!userPermissions) {
       userPermissions = await this.permissionService.getUserPermissions(
         user.id,
       );
-
-      await this.redisService.set(cacheKey, userPermissions, 60);
+      userPermissions = userPermissions || [];
+      await this.redisService.set(cacheKey, userPermissions, 300);
     }
+    request.user.permissions = userPermissions;
 
-    const hasPermission = requiredPermissions.some((p) =>
-      userPermissions.includes(p),
+    const hasPermission = requiredPermissions.every((permission) =>
+      userPermissions.includes(permission),
     );
 
     if (!hasPermission) {
-      throw new ForbiddenException(
-        `Forbidden: missing permission (${requiredPermissions.join(', ')})`,
-      );
+      throw new ForbiddenException({
+        message: 'Forbidden: insufficient permissions',
+        required: requiredPermissions,
+        current: userPermissions,
+      });
     }
 
     return true;
