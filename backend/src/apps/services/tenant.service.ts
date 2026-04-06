@@ -21,7 +21,7 @@ export class TenantService {
   ) {}
 
   private async validateUniqueCode(
-    code: string,
+    code?: string,
     excludeId?: string,
   ): Promise<void> {
     if (!code) return;
@@ -42,28 +42,34 @@ export class TenantService {
     }
   }
 
-  private async findTenantWithDeleted(id: string): Promise<Tenant> {
-    const tenant = await this.tenantRepo.findOne({
-      where: { id },
-      withDeleted: true,
-    });
+  private async findTenantOrFail(id: string): Promise<Tenant> {
+    const isSuperAdmin = RequestContextService.isSuperAdmin();
+    const currentTenantId = RequestContextService.getTenantId();
+
+    if (!isSuperAdmin && id !== currentTenantId) {
+      throw new NotFoundException(`Tenant with id ${id} not found`);
+    }
+
+    const tenant = await this.tenantRepo.findOneBy({ id });
 
     if (!tenant) {
-      throw new NotFoundException(`Tenant with id "${id}" not found`);
+      throw new NotFoundException(`Tenant with id ${id} not found`);
     }
 
     return tenant;
   }
 
-  private async findTenantOrFail(id: string): Promise<Tenant> {
+  private async findTenantWithDeleted(id: string): Promise<Tenant> {
     const isSuperAdmin = RequestContextService.isSuperAdmin();
     const tenantId = RequestContextService.getTenantId();
 
     const tenant = await this.tenantRepo.findOne({
       where: isSuperAdmin ? { id } : { id: tenantId },
+      withDeleted: true,
     });
-    if (!tenant || tenant.deleted_at) {
-      throw new NotFoundException(`Tenant with id ${id} not found`);
+
+    if (!tenant) {
+      throw new NotFoundException(`Tenant with id "${id}" not found`);
     }
 
     return tenant;
@@ -130,27 +136,40 @@ export class TenantService {
   }
 
   async update(id: string, updateTenant: UpdateTenantDto): Promise<Tenant> {
-    const tenant = await this.tenantRepo.findOne({
-      where: { id },
-    });
+    const isSuperAdmin = RequestContextService.isSuperAdmin();
 
-    if (!tenant) {
-      throw new NotFoundException(`Tenant with id "${id}" not found`);
-    }
-    if (updateTenant.code && updateTenant.code !== tenant.code) {
+    const tenant = await this.findTenantOrFail(id);
+
+    if (updateTenant.code) {
       await this.validateUniqueCode(updateTenant.code, id);
     }
-    Object.assign(tenant, updateTenant);
+
+    if (!isSuperAdmin) {
+      delete updateTenant.name;
+      delete updateTenant.code;
+      delete updateTenant.domain;
+      delete updateTenant.active_status;
+    }
+
+    if (updateTenant.name) tenant.name = updateTenant.name;
+    if (updateTenant.code && isSuperAdmin) tenant.code = updateTenant.code;
+    if (updateTenant.domain && isSuperAdmin)
+      tenant.domain = updateTenant.domain;
+    if (updateTenant.active_status && isSuperAdmin) {
+      tenant.active_status = updateTenant.active_status;
+    }
 
     return this.tenantRepo.save(tenant);
   }
 
   async softDelete(id: string): Promise<void> {
-    const result = await this.tenantRepo.softDelete(id);
+    const tenant = await this.findTenantOrFail(id);
 
-    if (result.affected === 0) {
-      throw new NotFoundException(`Tenant with id "${id}" not found`);
+    if (tenant.deleted_at) {
+      throw new BadRequestException(`Tenant with ${id} already deleted`);
     }
+
+    await this.tenantRepo.softRemove(tenant);
   }
 
   async restore(id: string): Promise<Tenant> {
@@ -159,18 +178,8 @@ export class TenantService {
       throw new BadRequestException('Tenant is not deleted');
     }
 
-    await this.tenantRepo.restore(id);
-
-    const restored = await this.tenantRepo.findOne({
-      where: { id },
-    });
-    if (!restored) {
-      throw new NotFoundException(
-        `Tenant with id "${id}" not found after restore`,
-      );
-    }
-
-    return restored;
+    await this.tenantRepo.restore(tenant.id);
+    return tenant;
   }
 
   async hardDelete(id: string): Promise<void> {
@@ -182,10 +191,6 @@ export class TenantService {
       );
     }
 
-    const result = await this.tenantRepo.delete(id);
-
-    if (result.affected === 0) {
-      throw new NotFoundException(`Tenant with id "${id}" not found`);
-    }
+    await this.tenantRepo.delete(tenant.id);
   }
 }

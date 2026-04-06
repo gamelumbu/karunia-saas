@@ -84,8 +84,8 @@ export class TenantController {
 
   @Patch(':id')
   @Permissions('tenant.update')
-  async update(@Param('id') id: string, @Body() dto: UpdateTenantDto) {
-    const updated = await this.tenantService.update(id, dto);
+  async update(@Param('id') id: string, @Body() tenantUpdate: UpdateTenantDto) {
+    const updated = await this.tenantService.update(id, tenantUpdate);
 
     return {
       success: true,

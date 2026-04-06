@@ -71,19 +71,6 @@ export class UserService {
     }
   }
 
-  private async findUserWithDeleted(id: string): Promise<User> {
-    const user = await this.userRepo.findOne({
-      where: { id },
-      withDeleted: true,
-    });
-
-    if (!user) {
-      throw new NotFoundException(`User with id ${id} not found`);
-    }
-
-    return user;
-  }
-
   private async findUserOrFail(id: string): Promise<User> {
     const isSuperAdmin = RequestContextService.isSuperAdmin();
     const tenantId = RequestContextService.getTenantId();
