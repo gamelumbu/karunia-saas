@@ -22,8 +22,10 @@
     "migration:generate": "pnpm typeorm migration:generate",
     "migration:run": "pnpm typeorm migration:run",
     "migration:revert": "pnpm typeorm migration:revert",
-    "seed:run": "pnpm run build && ts-node -r tsconfig-paths/register ./node_modules/typeorm-extension/bin/cli.cjs seed:run -d ./dist/database/config/data-source.config.js --preserveFilePaths true",
-    "seed:create": "ts-node -r tsconfig-paths/register ./node_modules/typeorm-extension/bin/cli.cjs seed:create -d dist/config/database.config.js --preserveFilePaths true -n"
+    "seed": "ts-node -r tsconfig-paths/register ./node_modules/typeorm-extension/bin/cli.cjs",
+    "seed:run": "pnpm run build && pnpm run seed -- seed:run -d ./dist/database/config/data-source.config.js --preserveFilePaths true",
+    "seed:role": "pnpm run seed:run -- -n RoleSeeder",
+    "seed:permission": "pnpm run seed:run -- -n PermissionSeeder"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

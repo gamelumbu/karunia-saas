@@ -1,0 +1,10 @@
+name:description
+SUPER_ADMIN;Akses penuh ke seluruh sistem termasuk konfigurasi global
+ADMIN;Mengelola pengguna, role, dan pengaturan tenant
+OWNER;Pemilik tenant dengan akses penuh ke data tenant
+MANAGER;Mengelola operasional dan tim dalam tenant
+STAFF;Pengguna internal dengan akses terbatas untuk operasional
+USER;Pengguna biasa dengan akses standar
+VIEWER;Hanya dapat melihat data tanpa bisa mengubah
+BILLING;Mengelola pembayaran, langganan, dan invoice
+SUPPORT;Menangani bantuan dan support pelanggan

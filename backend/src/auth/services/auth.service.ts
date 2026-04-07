@@ -107,7 +107,7 @@ export class AuthService {
 
       const savedUser = await manager.save(user);
       const role = manager.create(Role, {
-        name: 'owner',
+        name: 'OWNER',
       });
 
       const savedRole = await manager.save(role);

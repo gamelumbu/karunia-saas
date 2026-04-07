@@ -29,7 +29,7 @@ export class Role {
   tenant_id: string;
 
   @ManyToOne(() => Tenant, (tenant) => tenant.roles, {
-    nullable: false,
+    nullable: true,
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'tenant_id' })
