@@ -5,10 +5,14 @@ export function applyTenantScope<T extends ObjectLiteral>(
   qb: SelectQueryBuilder<T>,
   alias: string,
 ): SelectQueryBuilder<T> {
+  const tenantId = RequestContextService.getTenantId();
+
   return qb
-    .leftJoin(`${alias}.memberships`, 'membership')
-    .andWhere('membership.tenant_id = :tenantId', {
-      tenantId: RequestContextService.getTenantId(),
-    })
-    .distinct(true);
+    .leftJoinAndSelect(
+      `${alias}.memberships`,
+      'membership',
+      'membership.tenant_id = :tenantId',
+      { tenantId },
+    )
+    .leftJoinAndSelect('membership.role', 'role');
 }

@@ -53,6 +53,6 @@ export class RequestContextService {
   }
 
   static isSuperAdmin(): boolean {
-    return this.hasRole('super_admin');
+    return this.hasRole('SUPER_ADMIN');
   }
 }

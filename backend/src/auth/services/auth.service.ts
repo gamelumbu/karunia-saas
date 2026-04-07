@@ -54,10 +54,7 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
-    const { user, roles, permissions } = await this.validateUser(
-      email,
-      password,
-    );
+    const { user, roles } = await this.validateUser(email, password);
     const membership = user.memberships[0];
 
     const payload = {
@@ -65,7 +62,6 @@ export class AuthService {
       email: user.email,
       tenant_id: membership.tenant_id,
       roles,
-      permissions,
     };
 
     return {

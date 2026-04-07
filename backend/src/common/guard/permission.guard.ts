@@ -34,7 +34,7 @@ export class PermissionGuard implements CanActivate {
       throw new ForbiddenException('User not found');
     }
 
-    if (user.roles?.includes('super_admin')) {
+    if (user.roles?.includes('SUPER_ADMIN')) {
       return true;
     }
 
@@ -43,17 +43,22 @@ export class PermissionGuard implements CanActivate {
     let userPermissions: string[];
     try {
       const cached = await this.redisService.get<string[]>(cacheKey);
-      userPermissions =
-        cached ??
-        (await this.permissionService.getUserPermissions(user.id)) ??
-        [];
 
-      if (cached === null) {
+      if (cached) {
+        userPermissions = cached;
+      } else {
+        userPermissions = await this.permissionService.getUserPermissions(
+          user.id,
+          user.tenant_id,
+        );
+
         await this.redisService.set(cacheKey, userPermissions, this.CACHE_TTL);
       }
     } catch {
-      userPermissions =
-        (await this.permissionService.getUserPermissions(user.id)) ?? [];
+      userPermissions = await this.permissionService.getUserPermissions(
+        user.id,
+        user.tenant_id,
+      );
     }
     request.user.permissions = userPermissions;
 
@@ -73,6 +78,6 @@ export class PermissionGuard implements CanActivate {
   }
 
   private getCacheKey(userId: string, tenantId: string): string {
-    return `user_permissions:${userId}:${tenantId}`;
+    return `user_permissions:${userId}:${tenantId}:v2`;
   }
 }

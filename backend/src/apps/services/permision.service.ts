@@ -14,21 +14,20 @@ export class PermissionService {
     private rolePermissionRepo: Repository<RolePermission>,
   ) {}
 
-  async getUserPermissions(userId: string): Promise<string[]> {
-    const roles = await this.membershipRepo.find({
-      where: { user_id: userId },
-    });
-
-    const roleIds = roles.map(r => r.role_id);
-    if (!roleIds.length) return [];
-
+  async getUserPermissions(
+    userId: string,
+    tenantId: string,
+  ): Promise<string[]> {
     const permissions = await this.rolePermissionRepo
       .createQueryBuilder('rp')
       .innerJoin('rp.permission', 'p')
-      .where('rp.role_id IN (:...roleIds)', { roleIds })
-      .select(['p.resource', 'p.action'])
+      .innerJoin(Membership, 'm', 'm.role_id = rp.role_id')
+      .where('m.user_id = :userId', { userId })
+      .andWhere('m.tenant_id = :tenantId', { tenantId })
+      .select(['p.resource AS resource', 'p.action AS action'])
       .getRawMany();
 
-    return permissions.map(p => `${p.p_resource}.${p.p_action}`);
+    const result = permissions.map((p) => `${p.resource}.${p.action}`);
+    return [...new Set(result)];
   }
 }
