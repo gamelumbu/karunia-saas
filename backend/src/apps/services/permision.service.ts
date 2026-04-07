@@ -2,20 +2,20 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { RolePermission } from '../entities/master/role_permission.entity';
 import { Repository } from 'typeorm';
-import { UserRole } from '../entities/master/user_role.entity';
+import { Membership } from '../entities/master/membership.entity';
 
 @Injectable()
 export class PermissionService {
   constructor(
-    @InjectRepository(UserRole)
-    private userRoleRepo: Repository<UserRole>,
+    @InjectRepository(Membership)
+    private membershipRepo: Repository<Membership>,
 
     @InjectRepository(RolePermission)
     private rolePermissionRepo: Repository<RolePermission>,
   ) {}
 
   async getUserPermissions(userId: string): Promise<string[]> {
-    const roles = await this.userRoleRepo.find({
+    const roles = await this.membershipRepo.find({
       where: { user_id: userId },
     });
 

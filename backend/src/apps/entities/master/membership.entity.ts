@@ -1,21 +1,21 @@
 import {
+  Entity,
+  PrimaryGeneratedColumn,
+  ManyToOne,
+  JoinColumn,
   Column,
   CreateDateColumn,
-  Entity,
-  Index,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-  Unique,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
 import { User } from './user.entity';
+import { Tenant } from './tenant.entity';
 import { Role } from './role.entity';
 
-@Unique(['user_id', 'role_id'])
-@Index(['user_id', 'role_id'])
-@Entity('user_roles')
-export class UserRole {
+@Index(['tenant_id'])
+@Index(['user_id'])
+@Entity('membership')
+export class Membership {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -23,18 +23,25 @@ export class UserRole {
   user_id: string;
 
   @Column()
+  tenant_id: string;
+
+  @Column()
   role_id: string;
 
-  @ManyToOne(() => User, (user) => user.user_roles, {
-    nullable: false,
+  @ManyToOne(() => User, (user) => user.memberships, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @ManyToOne(() => Role, (role) => role.user_roles, {
-    nullable: false,
-    onDelete: 'CASCADE'
+  @ManyToOne(() => Tenant, (tenant) => tenant.memberships, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'tenant_id' })
+  tenant: Tenant;
+
+  @ManyToOne(() => Role, {
+    eager: true,
   })
   @JoinColumn({ name: 'role_id' })
   role: Role;

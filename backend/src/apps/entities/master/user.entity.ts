@@ -11,11 +11,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { UserRole } from './user_role.entity';
-import { Tenant } from './tenant.entity';
-
-@Index(['tenant_id', 'email'], { unique: true })
-@Index(['tenant_id', 'username'], { unique: true })
+import { Membership } from './membership.entity';
 @Entity('master_users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
@@ -46,15 +42,6 @@ export class User {
   @DeleteDateColumn({ nullable: true })
   deleted_at?: Date;
 
-  @OneToMany(() => UserRole, (userRole) => userRole.user)
-  user_roles: UserRole[];
-
-  @Column()
-  tenant_id: string;
-
-  @ManyToOne(() => Tenant, (tenant) => tenant.users, {
-     onDelete: 'CASCADE',
-  })
-  @JoinColumn({ name: 'tenant_id' })
-  tenant: Tenant;
+  @OneToMany(() => Membership, (member) => member.user)
+  memberships: Membership[];
 }

@@ -76,7 +76,7 @@ export class UserService {
     const tenantId = RequestContextService.getTenantId();
 
     const user = await this.userRepo.findOne({
-      where: isSuperAdmin ? { id } : { id, tenant_id: tenantId },
+      where: isSuperAdmin ? { id } : { id },
     });
 
     if (!user || user.deleted_at) {
@@ -91,7 +91,7 @@ export class UserService {
     const tenantId = RequestContextService.getTenantId();
 
     const user = await this.userRepo.findOne({
-      where: isSuperAdmin ? { id } : { id, tenant_id: tenantId },
+      where: isSuperAdmin ? { id } : { id },
       withDeleted: true,
     });
 
@@ -175,7 +175,6 @@ export class UserService {
       email: createUser.email,
       password: hashedPassword,
       active_status: createUser.active_status,
-      tenant_id: tenantId,
     });
 
     return await this.userRepo.save(user);
@@ -221,9 +220,6 @@ export class UserService {
     if (updateUser.email) user.email = updateUser.email;
     if (updateUser.password) user.password = updateUser.password;
     if (updateUser.active_status) user.active_status = updateUser.active_status;
-    if (updateUser.tenant_id && isSuperAdmin) {
-      user.tenant_id = updateUser.tenant_id;
-    }
 
     return await this.userRepo.save(user);
   }

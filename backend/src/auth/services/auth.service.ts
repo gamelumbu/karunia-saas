@@ -7,7 +7,7 @@ import { User } from '@/apps/entities/master/user.entity';
 import { RegisterDto } from './dto/register.dto';
 import { Tenant } from '@/apps/entities/master/tenant.entity';
 import { Role } from '@/apps/entities/master/role.entity';
-import { UserRole } from '@/apps/entities/master/user_role.entity';
+import { Membership } from '@/apps/entities/master/membership.entity';
 
 @Injectable()
 export class AuthService {
@@ -20,11 +20,11 @@ export class AuthService {
   async validateUser(email: string, password: string) {
     const user = await this.userRepository
       .createQueryBuilder('user')
-      .leftJoinAndSelect('user.tenant', 'tenant')
-      .leftJoinAndSelect('user.user_roles', 'user_roles')
-      .leftJoinAndSelect('user_roles.role', 'role')
-      .leftJoinAndSelect('role.role_permission', 'role_permission')
-      .leftJoinAndSelect('role_permission.permission', 'permission')
+      .leftJoinAndSelect('user.memberships', 'memberships')
+      .leftJoinAndSelect('memberships.tenant', 'tenant')
+      .leftJoinAndSelect('memberships.role', 'role')
+      .leftJoinAndSelect('role.role_permissions', 'role_permissions')
+      .leftJoinAndSelect('role_permissions.permission', 'permission')
       .where('user.email = :email', { email })
       .getOne();
 
@@ -38,10 +38,10 @@ export class AuthService {
       throw new UnauthorizedException('Password incorrect');
     }
 
-    const roles = user.user_roles.map((ur) => ur.role.name);
+    const roles = user.memberships.map((member) => member.role.name);
 
-    const permissions = user.user_roles.flatMap((ur) =>
-      ur.role.role_permission.map(
+    const permissions = user.memberships.flatMap((member) =>
+      member.role.role_permissions.map(
         (rp) => `${rp.permission.resource}.${rp.permission.action}`,
       ),
     );
@@ -62,7 +62,7 @@ export class AuthService {
     const payload = {
       sub: user.id,
       email: user.email,
-      tenant_id: user.tenant.id,
+      memberships: user.memberships,
       roles,
       permissions,
     };
@@ -107,14 +107,15 @@ export class AuthService {
 
       const savedUser = await manager.save(user);
       const role = manager.create(Role, {
-        name: 'admin',
+        name: 'owner',
         tenant_id: savedTenant.id,
       });
 
       const savedRole = await manager.save(role);
 
-      const userRole = manager.create(UserRole, {
+      const userRole = manager.create(Membership, {
         user_id: savedUser.id,
+        tenant_id: savedTenant.id,
         role_id: savedRole.id,
       });
 

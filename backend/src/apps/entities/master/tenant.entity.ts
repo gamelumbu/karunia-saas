@@ -8,9 +8,9 @@ import {
   UpdateDateColumn,
   OneToMany,
 } from 'typeorm';
-import { User } from './user.entity';
 import { Role } from './role.entity';
 import { Policy } from './policy.entity';
+import { Membership } from './membership.entity';
 
 @Entity('master_tenants')
 export class Tenant {
@@ -38,8 +38,8 @@ export class Tenant {
   @DeleteDateColumn({ nullable: true })
   deleted_at?: Date;
 
-  @OneToMany(() => User, (user) => user.tenant)
-  users: User[];
+  @OneToMany(() => Membership, (member) => member.tenant)
+  memberships: Membership[];
 
   @OneToMany(() => Role, (role) => role.tenant)
   roles: Role[];

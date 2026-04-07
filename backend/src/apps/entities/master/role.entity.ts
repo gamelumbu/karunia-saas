@@ -7,7 +7,6 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { UserRole } from './user_role.entity';
 import { Tenant } from './tenant.entity';
 import { RolePermission } from './role_permission.entity';
 
@@ -23,11 +22,8 @@ export class Role {
   @Column({ type: 'text', nullable: true })
   description: string;
 
-  @OneToMany(() => UserRole, (userRole) => userRole.role)
-  user_roles: UserRole[];
-
   @OneToMany(() => RolePermission, (rolePermission) => rolePermission.role)
-  role_permission: RolePermission[];
+  role_permissions: RolePermission[];
 
   @Column()
   tenant_id: string;
