@@ -54,14 +54,43 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
-    const { user, roles } = await this.validateUser(email, password);
-    const membership = user.memberships[0];
+    const { user } = await this.validateUser(email, password);
+
+    if (!user.memberships?.length) {
+      throw new UnauthorizedException('User has no tenant access');
+    }
+
+    return {
+      user_id: user.id,
+      email: user.email,
+      tenants: user.memberships.map((m) => ({
+        tenant_id: m.tenant_id,
+        tenant_name: m.tenant?.name,
+        role: m.role?.name,
+      })),
+    };
+  }
+
+  async selectTenant(userId: string, tenantId: string) {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['memberships'],
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const membership = user.memberships.find((m) => m.tenant_id === tenantId);
+
+    if (!membership) {
+      throw new UnauthorizedException('Tenant not found');
+    }
 
     const payload = {
       sub: user.id,
       email: user.email,
       tenant_id: membership.tenant_id,
-      roles,
     };
 
     return {

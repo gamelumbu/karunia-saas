@@ -3,6 +3,7 @@ import { AuthService } from '../services/auth.service';
 import { LoginDto } from '../services/dto/login.dto';
 import { JwtAuthGuard } from '@/common/guard/jwt.guard';
 import { RegisterDto } from '../services/dto/register.dto';
+import { SelectTenantDto } from '../services/dto/select-tenant.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -11,6 +12,11 @@ export class AuthController {
   @Post('login')
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.password);
+  }
+
+  @Post('select-tenant')
+  selectTenant(@Body() dto: SelectTenantDto) {
+    return this.authService.selectTenant(dto.user_id, dto.tenant_id);
   }
 
   @Post('register')
