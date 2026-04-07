@@ -26,6 +26,11 @@ export class CreateUserDto {
   @ApiProperty({ example: '' })
   password: string;
 
+  @IsNotEmpty({ message: 'role_id is required' })
+  @IsString({ message: 'role_id must be string' })
+  @ApiProperty({ example: '' })
+  role_id: string;
+
   @Transform(({ value }) => {
     if (typeof value === 'string') {
       return StatusAktif[value.toUpperCase() as keyof typeof StatusAktif];
@@ -41,7 +46,6 @@ export class CreateUserDto {
   @ApiPropertyOptional({ example: '' })
   active_status: StatusAktif;
 
-  @ApiPropertyOptional({ example: '' })
   @IsOptional()
   @IsUUID('4', { message: 'tenant_id must be a valid UUID' })
   tenant_id?: string;

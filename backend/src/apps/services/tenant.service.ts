@@ -10,7 +10,6 @@ import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UpdateTenantDto } from './dto/tenant/update-tenant.dto';
 import { TenantTypeFilter } from '@/common/enum/TenantTypeFilter';
-import { TenantScopeHelper } from '@/common/helper/tenant-scope.helper';
 import { RequestContextService } from '@/common/context/request-context.service';
 
 @Injectable()
@@ -94,7 +93,6 @@ export class TenantService {
       sortBy = 'created_at';
     }
     const qb = this.tenantRepo.createQueryBuilder('tenant');
-    TenantScopeHelper.apply(qb, 'tenant', { isRoot: true });
 
     if (type === TenantTypeFilter.DELETED) {
       qb.withDeleted().andWhere('tenant.deleted_at IS NOT NULL');

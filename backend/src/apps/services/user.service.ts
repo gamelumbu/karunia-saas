@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -8,17 +9,20 @@ import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserTypeFilter } from '@/common/enum/UserTypeFilter';
 import { CreateUserDto } from './dto/users/create-user.dto';
-import { TenantScopeHelper } from '@/common/helper/tenant-scope.helper';
 import * as bcrypt from 'bcrypt';
 import { RequestContextService } from '@/common/context/request-context.service';
 import { UpdateUserDto } from './dto/users/update-user.dto';
 import { Tenant } from '../entities/master/tenant.entity';
+import { USER_REPOSITORY } from '@/common/constant/repository.constant';
+import type { TenantRepository } from '@/common/database/tenant/tenant-repository.type';
+import { Membership } from '../entities/master/membership.entity';
+import { Role } from '../entities/master/role.entity';
 
 @Injectable()
 export class UserService {
   constructor(
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
+    @Inject(USER_REPOSITORY)
+    private readonly userRepo: TenantRepository<User>,
     @InjectRepository(Tenant)
     private readonly tenantRepo: Repository<Tenant>,
   ) {}
@@ -32,10 +36,9 @@ export class UserService {
 
     if (username) {
       const existingUsername = await this.userRepo
-        .createQueryBuilder('user')
+        .createScopedQuery('user')
         .withDeleted()
-        .where('user.username = :username', { username })
-        .andWhere('user.tenant_id = :tenantId', { tenantId })
+        .andWhere('user.username = :username', { username })
         .andWhere(excludeId ? 'user.id != :excludeId' : '1=1', { excludeId })
         .getOne();
 
@@ -52,10 +55,9 @@ export class UserService {
 
     if (email) {
       const existingEmail = await this.userRepo
-        .createQueryBuilder('user')
+        .createScopedQuery('user')
         .withDeleted()
-        .where('user.email = :email', { email })
-        .andWhere('user.tenant_id = :tenantId', { tenantId })
+        .andWhere('user.email = :email', { email })
         .andWhere(excludeId ? 'user.id != :excludeId' : '1=1', { excludeId })
         .getOne();
 
@@ -109,27 +111,24 @@ export class UserService {
     sortBy: string = 'created_at',
     sortOrder: 'ASC' | 'DESC' = 'DESC',
     type: 'active' | 'deleted' | 'all' = 'active',
-  ): Promise<{
-    data: User[];
-    total: number;
-    page: number;
-    limit: number;
-  }> {
-    const allowedSort = ['created_at', 'name'];
+  ) {
+    const allowedSort = ['created_at', 'username', 'email'];
     if (!allowedSort.includes(sortBy)) {
       sortBy = 'created_at';
     }
 
-    const qb = this.userRepo.createQueryBuilder('user');
-    TenantScopeHelper.apply(qb, 'user');
-    if (type === UserTypeFilter.DELETED) {
+    const qb = this.userRepo.createScopedQuery('user');
+
+    if (type === 'deleted') {
       qb.withDeleted().andWhere('user.deleted_at IS NOT NULL');
-    } else if (type === UserTypeFilter.ALL) {
+    } else if (type === 'all') {
       qb.withDeleted();
+    } else {
+      qb.andWhere('user.deleted_at IS NULL');
     }
 
     if (search) {
-      qb.andWhere(`(user.username ILIKE :search OR user.email ILIKE :search)`, {
+      qb.andWhere('(user.username ILIKE :search OR user.email ILIKE :search)', {
         search: `%${search}%`,
       });
     }
@@ -146,7 +145,7 @@ export class UserService {
   }
 
   async create(createUser: CreateUserDto): Promise<User> {
-    const { username, email, password } = createUser;
+    const { username, email, password, role_id } = createUser;
 
     await this.validateUniqueUsernameEmail(username, email);
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -170,14 +169,34 @@ export class UserService {
       tenantId = currentUser.tenant_id;
     }
 
-    const user = this.userRepo.create({
-      username: createUser.username,
-      email: createUser.email,
-      password: hashedPassword,
-      active_status: createUser.active_status,
-    });
+    return await this.userRepo.manager.transaction(async (manager) => {
+      const user = manager.create(User, {
+        username,
+        email,
+        password: hashedPassword,
+        active_status: createUser.active_status,
+      });
 
-    return await this.userRepo.save(user);
+      const savedUser = await manager.save(user);
+
+      const roleId =
+        role_id ||
+        (await manager.findOne(Role, { where: { name: 'member' } }))?.id;
+
+      if (!roleId) {
+        throw new BadRequestException('Role not found');
+      }
+
+      await manager.save(
+        manager.create(Membership, {
+          user_id: savedUser.id,
+          tenant_id: tenantId,
+          role_id: roleId,
+        }),
+      );
+
+      return savedUser;
+    });
   }
 
   async findOne(id: string): Promise<User> {

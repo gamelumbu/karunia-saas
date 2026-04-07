@@ -58,11 +58,12 @@ export class AuthService {
       email,
       password,
     );
+    const membership = user.memberships[0];
 
     const payload = {
       sub: user.id,
       email: user.email,
-      memberships: user.memberships,
+      tenant_id: membership.tenant_id,
       roles,
       permissions,
     };
@@ -102,13 +103,11 @@ export class AuthService {
         username,
         email,
         password: hashedPassword,
-        tenant_id: savedTenant.id,
       });
 
       const savedUser = await manager.save(user);
       const role = manager.create(Role, {
         name: 'owner',
-        tenant_id: savedTenant.id,
       });
 
       const savedRole = await manager.save(role);
