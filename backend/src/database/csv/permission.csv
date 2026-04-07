@@ -1,0 +1,11 @@
+resource;action;description
+user;create;Create user
+user;read;Read user
+user;update;Update user
+user;delete;Delete user
+tenant;create;Create tenant
+tenant;read;Read tenant
+tenant;update;Update tenant
+tenant;delete;Delete tenant
+role;create;Create role
+role;read;Read role
