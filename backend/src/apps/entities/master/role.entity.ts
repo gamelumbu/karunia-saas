@@ -1,16 +1,6 @@
-import {
-  Column,
-  Entity,
-  Index,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
-import { Tenant } from './tenant.entity';
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { RolePermission } from './role_permission.entity';
 
-@Index(['tenant_id'])
 @Entity('master_roles')
 export class Role {
   @PrimaryGeneratedColumn('uuid')
@@ -24,14 +14,4 @@ export class Role {
 
   @OneToMany(() => RolePermission, (rolePermission) => rolePermission.role)
   role_permissions: RolePermission[];
-
-  @Column()
-  tenant_id: string;
-
-  @ManyToOne(() => Tenant, (tenant) => tenant.roles, {
-    nullable: true,
-    onDelete: 'CASCADE',
-  })
-  @JoinColumn({ name: 'tenant_id' })
-  tenant: Tenant;
 }

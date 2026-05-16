@@ -6,6 +6,12 @@ import { DataSource } from 'typeorm';
 import { Seeder } from 'typeorm-extension';
 import { Permission } from '@/apps/entities/master/permission.entity';
 
+type PermissionSeedRow = {
+  resource: string;
+  action: string;
+  description: string;
+};
+
 export default class PermissionSeeder implements Seeder {
   private readonly logger = new Logger(PermissionSeeder.name);
 
@@ -17,7 +23,7 @@ export default class PermissionSeeder implements Seeder {
       );
       const csvContent = fs.readFileSync(filePath, 'utf-8');
 
-      const records: any[] = parse(csvContent, {
+      const records = parse<PermissionSeedRow>(csvContent, {
         delimiter: ';',
         columns: ['resource', 'action', 'description'],
         from_line: 2,

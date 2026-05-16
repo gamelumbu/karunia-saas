@@ -8,7 +8,6 @@ import {
   UpdateDateColumn,
   OneToMany,
 } from 'typeorm';
-import { Role } from './role.entity';
 import { Policy } from './policy.entity';
 import { Membership } from './membership.entity';
 
@@ -40,9 +39,6 @@ export class Tenant {
 
   @OneToMany(() => Membership, (member) => member.tenant)
   memberships: Membership[];
-
-  @OneToMany(() => Role, (role) => role.tenant)
-  roles: Role[];
 
   @OneToMany(() => Policy, (policy) => policy.tenant)
   policy: Policy[];

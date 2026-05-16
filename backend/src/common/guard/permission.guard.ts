@@ -3,16 +3,21 @@ import {
   ExecutionContext,
   Injectable,
   ForbiddenException,
-  InternalServerErrorException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PERMISSION_KEY } from '../decorator/permission.decorator';
-import { PermissionService } from '@/apps/services/permision.service';
+import { PermissionService } from '@/apps/services/permission.service';
 import { RedisService } from '@/database/redis/redis.service';
+import type { Request } from 'express';
+import type { CurrentUser } from '../context/request-context.service';
+
+type AuthenticatedRequest = Request & {
+  user?: CurrentUser;
+};
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
-  private readonly CACHE_TTL = 300
+  private readonly CACHE_TTL = 300;
   constructor(
     private reflector: Reflector,
     private permissionService: PermissionService,
@@ -27,14 +32,14 @@ export class PermissionGuard implements CanActivate {
 
     if (!requiredPermissions?.length) return true;
 
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const user = request.user;
 
     if (!user) {
       throw new ForbiddenException('User not found');
     }
 
-    if (user.roles?.includes('SUPER_ADMIN')) {
+    if (user.roles?.some((role) => ['SUPER_ADMIN', 'OWNER'].includes(role))) {
       return true;
     }
 

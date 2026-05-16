@@ -7,7 +7,7 @@ import { PermissionModule } from './permission.module';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Tenant]), PermissionModule],
-  providers: [TenantService,],
+  providers: [TenantService],
   controllers: [TenantController],
   exports: [TypeOrmModule],
 })

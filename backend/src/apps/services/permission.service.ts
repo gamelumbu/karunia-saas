@@ -4,14 +4,19 @@ import { RolePermission } from '../entities/master/role_permission.entity';
 import { Repository } from 'typeorm';
 import { Membership } from '../entities/master/membership.entity';
 
+type PermissionRow = {
+  resource: string;
+  action: string;
+};
+
 @Injectable()
 export class PermissionService {
   constructor(
     @InjectRepository(Membership)
-    private membershipRepo: Repository<Membership>,
+    private readonly membershipRepo: Repository<Membership>,
 
     @InjectRepository(RolePermission)
-    private rolePermissionRepo: Repository<RolePermission>,
+    private readonly rolePermissionRepo: Repository<RolePermission>,
   ) {}
 
   async getUserPermissions(
@@ -25,7 +30,7 @@ export class PermissionService {
       .where('m.user_id = :userId', { userId })
       .andWhere('m.tenant_id = :tenantId', { tenantId })
       .select(['p.resource AS resource', 'p.action AS action'])
-      .getRawMany();
+      .getRawMany<PermissionRow>();
 
     const result = permissions.map((p) => `${p.resource}.${p.action}`);
     return [...new Set(result)];

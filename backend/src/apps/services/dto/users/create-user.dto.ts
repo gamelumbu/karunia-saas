@@ -26,16 +26,16 @@ export class CreateUserDto {
   @ApiProperty({ example: '' })
   password: string;
 
-  @IsNotEmpty({ message: 'role_id is required' })
-  @IsString({ message: 'role_id must be string' })
-  @ApiProperty({ example: '' })
-  role_id: string;
+  @IsOptional()
+  @IsUUID('4', { message: 'role_id must be a valid UUID' })
+  @ApiPropertyOptional({ example: '' })
+  role_id?: string;
 
-  @Transform(({ value }) => {
+  @Transform(({ value }: { value: unknown }) => {
     if (typeof value === 'string') {
       return StatusAktif[value.toUpperCase() as keyof typeof StatusAktif];
     }
-    return value;
+    return value as StatusAktif;
   })
   @IsEnum(StatusAktif, {
     message: ({ value }) =>
@@ -44,6 +44,7 @@ export class CreateUserDto {
         .join(', ')}`,
   })
   @ApiPropertyOptional({ example: '' })
+  @IsOptional()
   active_status: StatusAktif;
 
   @IsOptional()

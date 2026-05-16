@@ -21,7 +21,7 @@ import { RedisModule } from './database/redis/redis.module';
     AuthModule,
     TenantModule,
     PermissionModule,
-    RedisModule
+    RedisModule,
   ],
   controllers: [AppController],
   providers: [

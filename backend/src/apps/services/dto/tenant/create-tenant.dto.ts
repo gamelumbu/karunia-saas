@@ -6,24 +6,24 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export class CreateTenantDto {
   @IsNotEmpty({ message: 'name is required' })
   @IsString({ message: 'name must be string' })
-  @ApiProperty({ example: ''})
+  @ApiProperty({ example: '' })
   name: string;
 
   @IsNotEmpty({ message: 'code is required' })
   @IsString({ message: 'code must be string' })
-  @ApiProperty({ example: ''})
+  @ApiProperty({ example: '' })
   code: string;
 
   @IsOptional()
   @IsString({ message: 'domain must be string' })
-  @ApiPropertyOptional({ example: ''})
+  @ApiPropertyOptional({ example: '' })
   domain?: string;
 
-  @Transform(({ value }) => {
+  @Transform(({ value }: { value: unknown }) => {
     if (typeof value === 'string') {
       return StatusAktif[value.toUpperCase() as keyof typeof StatusAktif];
     }
-    return value;
+    return value as StatusAktif;
   })
   @IsEnum(StatusAktif, {
     message: ({ value }) =>
@@ -31,6 +31,7 @@ export class CreateTenantDto {
         .filter((k) => isNaN(Number(k)))
         .join(', ')}`,
   })
-  @ApiProperty({ example: ''})
+  @ApiPropertyOptional({ example: '' })
+  @IsOptional()
   active_status: StatusAktif;
 }

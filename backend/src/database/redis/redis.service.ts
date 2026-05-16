@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
 @Injectable()
 export class RedisService {
+  private readonly logger = new Logger(RedisService.name);
   private client: Redis;
 
   constructor(private configService: ConfigService) {
@@ -12,28 +13,28 @@ export class RedisService {
       port: Number(this.configService.get('REDIS_PORT')),
     });
     this.client.on('connect', () => {
-      console.log('Redis connected');
+      this.logger.log('Redis connected');
     });
 
     this.client.on('error', (err) => {
-      console.error('Redis error:', err.message);
+      this.logger.warn(`Redis error: ${err.message}`);
     });
   }
 
-  getClient() {
+  getClient(): Redis {
     return this.client;
   }
 
   async get<T>(key: string): Promise<T | null> {
     const data = await this.client.get(key);
-    return data ? JSON.parse(data) : null;
+    return data ? (JSON.parse(data) as T) : null;
   }
 
-  async set(key: string, value: any, ttl = 60) {
+  async set<T>(key: string, value: T, ttl = 60): Promise<void> {
     await this.client.set(key, JSON.stringify(value), 'EX', ttl);
   }
 
-  async del(key: string) {
+  async del(key: string): Promise<void> {
     await this.client.del(key);
   }
 }

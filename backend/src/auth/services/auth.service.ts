@@ -1,5 +1,5 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
@@ -8,6 +8,9 @@ import { RegisterDto } from './dto/register.dto';
 import { Tenant } from '@/apps/entities/master/tenant.entity';
 import { Role } from '@/apps/entities/master/role.entity';
 import { Membership } from '@/apps/entities/master/membership.entity';
+import { Permission } from '@/apps/entities/master/permission.entity';
+import { RolePermission } from '@/apps/entities/master/role_permission.entity';
+import { StatusAktif } from '@/common/enum/StatusAktif';
 
 @Injectable()
 export class AuthService {
@@ -32,24 +35,18 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
+    if (user.active_status !== StatusAktif.ACTIVE) {
+      throw new UnauthorizedException('User is inactive');
+    }
+
     const match = await bcrypt.compare(password, user.password);
 
     if (!match) {
       throw new UnauthorizedException('Password incorrect');
     }
 
-    const roles = user.memberships.map((member) => member.role.name);
-
-    const permissions = user.memberships.flatMap((member) =>
-      member.role.role_permissions.map(
-        (rp) => `${rp.permission.resource}.${rp.permission.action}`,
-      ),
-    );
-
     return {
       user,
-      roles,
-      permissions,
     };
   }
 
@@ -74,7 +71,7 @@ export class AuthService {
   async selectTenant(userId: string, tenantId: string) {
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      relations: ['memberships'],
+      relations: ['memberships', 'memberships.role', 'memberships.tenant'],
     });
 
     if (!user) {
@@ -91,6 +88,7 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       tenant_id: membership.tenant_id,
+      roles: membership.role ? [membership.role.name] : [],
     };
 
     return {
@@ -131,16 +129,26 @@ export class AuthService {
       });
 
       const savedUser = await manager.save(user);
-      const role = manager.create(Role, {
-        name: 'OWNER',
+      let role = await manager.findOne(Role, {
+        where: { name: 'OWNER' },
+        relations: ['role_permissions'],
       });
 
-      const savedRole = await manager.save(role);
+      if (!role) {
+        role = await manager.save(
+          manager.create(Role, {
+            name: 'OWNER',
+            description: 'Pemilik tenant dengan akses penuh ke data tenant',
+          }),
+        );
+      }
+
+      await this.ensureOwnerPermissions(manager, role.id);
 
       const userRole = manager.create(Membership, {
         user_id: savedUser.id,
         tenant_id: savedTenant.id,
-        role_id: savedRole.id,
+        role_id: role.id,
       });
 
       await manager.save(userRole);
@@ -151,5 +159,36 @@ export class AuthService {
         tenant: savedTenant,
       };
     });
+  }
+
+  private async ensureOwnerPermissions(
+    manager: EntityManager,
+    roleId: string,
+  ): Promise<void> {
+    const permissions = await manager.find(Permission);
+
+    if (!permissions.length) {
+      return;
+    }
+
+    const existingRolePermissions = await manager.find(RolePermission, {
+      where: { role_id: roleId },
+    });
+    const existingPermissionIds = new Set(
+      existingRolePermissions.map((item) => item.permission_id),
+    );
+
+    const missing = permissions
+      .filter((permission) => !existingPermissionIds.has(permission.id))
+      .map((permission) =>
+        manager.create(RolePermission, {
+          role_id: roleId,
+          permission_id: permission.id,
+        }),
+      );
+
+    if (missing.length) {
+      await manager.save(RolePermission, missing);
+    }
   }
 }

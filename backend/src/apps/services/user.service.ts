@@ -32,8 +32,6 @@ export class UserService {
     email?: string,
     excludeId?: string,
   ): Promise<void> {
-    const tenantId = RequestContextService.getTenantId();
-
     if (username) {
       const existingUsername = await this.userRepo
         .createScopedQuery('user')
@@ -74,12 +72,10 @@ export class UserService {
   }
 
   private async findUserOrFail(id: string): Promise<User> {
-    const isSuperAdmin = RequestContextService.isSuperAdmin();
-    const tenantId = RequestContextService.getTenantId();
-
-    const user = await this.userRepo.findOne({
-      where: isSuperAdmin ? { id } : { id },
-    });
+    const user = await this.userRepo
+      .createScopedQuery('user')
+      .andWhere('user.id = :id', { id })
+      .getOne();
 
     if (!user || user.deleted_at) {
       throw new NotFoundException(`User with id ${id} not found`);
@@ -89,13 +85,11 @@ export class UserService {
   }
 
   private async findUserWithDeletedOrFail(id: string): Promise<User> {
-    const isSuperAdmin = RequestContextService.isSuperAdmin();
-    const tenantId = RequestContextService.getTenantId();
-
-    const user = await this.userRepo.findOne({
-      where: isSuperAdmin ? { id } : { id },
-      withDeleted: true,
-    });
+    const user = await this.userRepo
+      .createScopedQuery('user')
+      .withDeleted()
+      .andWhere('user.id = :id', { id })
+      .getOne();
 
     if (!user) {
       throw new NotFoundException(`User with id ${id} not found`);
@@ -110,7 +104,7 @@ export class UserService {
     search = '',
     sortBy: string = 'created_at',
     sortOrder: 'ASC' | 'DESC' = 'DESC',
-    type: 'active' | 'deleted' | 'all' = 'active',
+    type: UserTypeFilter = UserTypeFilter.ACTIVE,
   ) {
     const allowedSort = ['created_at', 'username', 'email'];
     if (!allowedSort.includes(sortBy)) {
@@ -119,9 +113,9 @@ export class UserService {
 
     const qb = this.userRepo.createScopedQuery('user');
 
-    if (type === 'deleted') {
+    if (type === UserTypeFilter.DELETED) {
       qb.withDeleted().andWhere('user.deleted_at IS NOT NULL');
-    } else if (type === 'all') {
+    } else if (type === UserTypeFilter.ALL) {
       qb.withDeleted();
     } else {
       qb.andWhere('user.deleted_at IS NULL');
@@ -181,7 +175,7 @@ export class UserService {
 
       const roleId =
         role_id ||
-        (await manager.findOne(Role, { where: { name: 'member' } }))?.id;
+        (await manager.findOne(Role, { where: { name: 'USER' } }))?.id;
 
       if (!roleId) {
         throw new BadRequestException('Role not found');
@@ -225,6 +219,7 @@ export class UserService {
 
     if (!isSuperAdmin) {
       delete updateUser.tenant_id;
+      delete updateUser.role_id;
     } else if (updateUser.tenant_id) {
       const tenant = await this.tenantRepo.findOne({
         where: { id: updateUser.tenant_id },
@@ -240,7 +235,23 @@ export class UserService {
     if (updateUser.password) user.password = updateUser.password;
     if (updateUser.active_status) user.active_status = updateUser.active_status;
 
-    return await this.userRepo.save(user);
+    return await this.userRepo.manager.transaction(async (manager) => {
+      const savedUser = await manager.save(user);
+
+      if (isSuperAdmin && (updateUser.tenant_id || updateUser.role_id)) {
+        const membership = await manager.findOne(Membership, {
+          where: { user_id: id },
+        });
+
+        if (membership) {
+          if (updateUser.tenant_id) membership.tenant_id = updateUser.tenant_id;
+          if (updateUser.role_id) membership.role_id = updateUser.role_id;
+          await manager.save(membership);
+        }
+      }
+
+      return savedUser;
+    });
   }
 
   async softDelete(id: string): Promise<User> {

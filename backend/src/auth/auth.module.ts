@@ -6,14 +6,16 @@ import { User } from '@/apps/entities/master/user.entity';
 import { AuthController } from './controllers/auth.controller';
 import { JwtStrategy } from './services/jwt.strategy';
 import { StringValue } from 'ms';
+import { Membership } from '@/apps/entities/master/membership.entity';
 
 const expiresIn = (process.env.JWT_EXPIRES_IN ?? '4h') as StringValue;
+const jwtSecret = process.env.JWT_SECRET ?? 'karunia-local-dev-secret';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, Membership]),
     JwtModule.register({
-      secret: process.env.JWT_SECRET,
+      secret: jwtSecret,
       signOptions: {
         expiresIn,
       },

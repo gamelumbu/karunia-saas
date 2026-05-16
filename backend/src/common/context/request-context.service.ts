@@ -3,17 +3,18 @@ import { requestContext } from './request-context';
 export interface CurrentUser {
   id: string;
   tenant_id: string;
+  email?: string;
   roles?: string[];
   permissions?: string[];
 }
 
 export class RequestContextService {
-  static get<T = any>(key: string): T | undefined {
-    return requestContext.getStore()?.[key];
+  static get<K extends keyof CurrentUser>(key: K): CurrentUser[K] | undefined {
+    return requestContext.getStore()?.user?.[key];
   }
 
   static getUser(): CurrentUser {
-    const user = this.get<CurrentUser>('user');
+    const user = requestContext.getStore()?.user;
 
     if (!user) {
       throw new Error('User not found in RequestContext');

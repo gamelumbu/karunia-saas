@@ -12,6 +12,6 @@ const userRepositoryProvider = createTenantRepositoryProvider(User);
   imports: [TypeOrmModule.forFeature([User]), PermissionModule, TenantModule],
   providers: [UserService, userRepositoryProvider],
   controllers: [UserController],
-  exports: [userRepositoryProvider]
+  exports: [userRepositoryProvider],
 })
-export class UserModule {}  
+export class UserModule {}

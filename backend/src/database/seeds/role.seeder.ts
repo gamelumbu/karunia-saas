@@ -6,18 +6,20 @@ import { DataSource } from 'typeorm';
 import { Seeder } from 'typeorm-extension';
 import { Role } from '@/apps/entities/master/role.entity';
 
+type RoleSeedRow = {
+  name: string;
+  description: string;
+};
+
 export default class RoleSeeder implements Seeder {
   private readonly logger = new Logger(RoleSeeder.name);
 
   public async run(dataSource: DataSource): Promise<void> {
     try {
-      const filePath = path.join(
-        process.cwd(),
-        'src/database/csv/role.csv',
-      );
+      const filePath = path.join(process.cwd(), 'src/database/csv/role.csv');
       const csvContent = fs.readFileSync(filePath, 'utf-8');
 
-      const records: any[] = parse(csvContent, {
+      const records = parse<RoleSeedRow>(csvContent, {
         delimiter: ';',
         columns: ['name', 'description'],
         from_line: 2,

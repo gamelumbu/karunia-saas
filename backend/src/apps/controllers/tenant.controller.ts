@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -20,6 +21,7 @@ import { PaginationTenantQueryDto } from '../services/dto/tenant/pagination.tena
 import { Tenant } from '../entities/master/tenant.entity';
 import { PaginatedTenantResponseDto } from '../services/dto/tenant/pagination-response.dto';
 import { UpdateTenantDto } from '../services/dto/tenant/update-tenant.dto';
+import { TenantTypeFilter } from '@/common/enum/TenantTypeFilter';
 
 @UseGuards(JwtAuthGuard, PermissionGuard)
 @Controller('tenant')
@@ -38,7 +40,7 @@ export class TenantController {
       query.search ?? '',
       query.sortBy ?? 'created_at',
       query.sortOrder ?? 'DESC',
-      query.type ?? 'active',
+      query.type ?? TenantTypeFilter.ACTIVE,
     );
 
     const totalPages = Math.ceil(result.total / result.limit);
@@ -72,7 +74,7 @@ export class TenantController {
   @Get(':id')
   @Permissions('tenant.read')
   @HttpCode(HttpStatus.OK)
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id', new ParseUUIDPipe()) id: string) {
     const tenant = await this.tenantService.findOne(id);
 
     return {
@@ -84,7 +86,10 @@ export class TenantController {
 
   @Patch(':id')
   @Permissions('tenant.update')
-  async update(@Param('id') id: string, @Body() tenantUpdate: UpdateTenantDto) {
+  async update(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() tenantUpdate: UpdateTenantDto,
+  ) {
     const updated = await this.tenantService.update(id, tenantUpdate);
 
     return {
@@ -96,7 +101,7 @@ export class TenantController {
 
   @Delete(':id')
   @Permissions('tenant.delete')
-  async softDelete(@Param('id') id: string) {
+  async softDelete(@Param('id', new ParseUUIDPipe()) id: string) {
     await this.tenantService.softDelete(id);
 
     return {
@@ -107,7 +112,7 @@ export class TenantController {
 
   @Patch(':id/restore')
   @Permissions('tenant.restore')
-  async restore(@Param('id') id: string) {
+  async restore(@Param('id', new ParseUUIDPipe()) id: string) {
     const restored = await this.tenantService.restore(id);
 
     return {
@@ -119,7 +124,7 @@ export class TenantController {
 
   @Delete('permanent/:id')
   @Permissions('tenant.delete')
-  async hardDelete(@Param('id') id: string) {
+  async hardDelete(@Param('id', new ParseUUIDPipe()) id: string) {
     await this.tenantService.hardDelete(id);
 
     return {

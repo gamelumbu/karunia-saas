@@ -15,7 +15,6 @@ import { Role } from './role.entity';
 @Index(['permission_id'])
 @Entity('role_permissions')
 export class RolePermission {
-
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

@@ -21,6 +21,7 @@ import { Permissions } from '@/common/decorator/permission.decorator';
 import { User } from '../entities/master/user.entity';
 import { CreateUserDto } from '../services/dto/users/create-user.dto';
 import { UpdateUserDto } from '../services/dto/users/update-user.dto';
+import { UserTypeFilter } from '@/common/enum/UserTypeFilter';
 
 @UseGuards(JwtAuthGuard, PermissionGuard)
 @Controller('user')
@@ -39,7 +40,7 @@ export class UserController {
       query.search ?? '',
       query.sortBy ?? 'created_at',
       query.sortOrder ?? 'DESC',
-      query.type ?? 'active',
+      query.type ?? UserTypeFilter.ACTIVE,
     );
 
     const totalPages = Math.ceil(result.total / result.limit);
@@ -73,7 +74,7 @@ export class UserController {
   @Get(':id')
   @Permissions('user.read')
   @HttpCode(HttpStatus.OK)
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id', new ParseUUIDPipe()) id: string) {
     const user = await this.userService.findOne(id);
     return {
       success: true,
@@ -84,7 +85,10 @@ export class UserController {
 
   @Patch(':id')
   @Permissions('user.update')
-  async update(@Param('id') id: string, @Body() userUpdate: UpdateUserDto) {
+  async update(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() userUpdate: UpdateUserDto,
+  ) {
     const updated = await this.userService.update(id, userUpdate);
 
     return {
@@ -96,7 +100,7 @@ export class UserController {
 
   @Delete(':id')
   @Permissions('user.delete')
-  async softDelete(@Param('id') id: string) {
+  async softDelete(@Param('id', new ParseUUIDPipe()) id: string) {
     await this.userService.softDelete(id);
 
     return {
@@ -107,7 +111,7 @@ export class UserController {
 
   @Patch(':id/restore')
   @Permissions('user.restore')
-  async restore(@Param('id') id: string) {
+  async restore(@Param('id', new ParseUUIDPipe()) id: string) {
     const restored = await this.userService.restore(id);
 
     return {
@@ -119,7 +123,7 @@ export class UserController {
 
   @Delete('permanent/:id')
   @Permissions('user.delete')
-  async hardDelete(@Param('id') id: string) {
+  async hardDelete(@Param('id', new ParseUUIDPipe()) id: string) {
     await this.userService.hardDelete(id);
 
     return {

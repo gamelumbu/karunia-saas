@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -80,7 +79,7 @@ export class TenantService {
     search = '',
     sortBy: string = 'created_at',
     sortOrder: 'ASC' | 'DESC' = 'DESC',
-    type: 'active' | 'deleted' | 'all' = 'active',
+    type: TenantTypeFilter = TenantTypeFilter.ACTIVE,
   ): Promise<{
     data: Tenant[];
     total: number;
