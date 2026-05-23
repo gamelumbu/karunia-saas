@@ -9,3 +9,11 @@ tenant;update;Update tenant
 tenant;delete;Delete tenant
 role;create;Create role
 role;read;Read role
+role;update;Update role
+role;delete;Delete role
+product;create;Create product
+product;read;Read product
+product;update;Update product
+product;delete;Delete product
+order;read;Read order
+order;update;Update order

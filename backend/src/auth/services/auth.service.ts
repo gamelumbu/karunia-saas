@@ -60,6 +60,11 @@ export class AuthService {
     return {
       user_id: user.id,
       email: user.email,
+      access_token: this.jwtService.sign({
+        sub: user.id,
+        email: user.email,
+        roles: [],
+      }),
       tenants: user.memberships.map((m) => ({
         tenant_id: m.tenant_id,
         tenant_name: m.tenant?.name,
@@ -130,7 +135,7 @@ export class AuthService {
 
       const savedUser = await manager.save(user);
       let role = await manager.findOne(Role, {
-        where: { name: 'OWNER' },
+        where: { name: 'OWNER', tenant_id: savedTenant.id },
         relations: ['role_permissions'],
       });
 
@@ -139,6 +144,7 @@ export class AuthService {
           manager.create(Role, {
             name: 'OWNER',
             description: 'Pemilik tenant dengan akses penuh ke data tenant',
+            tenant_id: savedTenant.id,
           }),
         );
       }
@@ -153,10 +159,25 @@ export class AuthService {
 
       await manager.save(userRole);
 
+      const accessToken = this.jwtService.sign({
+        sub: savedUser.id,
+        email: savedUser.email,
+        tenant_id: savedTenant.id,
+        roles: [role.name],
+      });
+
       return {
         message: 'Register success',
-        user: savedUser,
-        tenant: savedTenant,
+        user_id: savedUser.id,
+        email: savedUser.email,
+        access_token: accessToken,
+        tenants: [
+          {
+            tenant_id: savedTenant.id,
+            tenant_name: savedTenant.name,
+            role: role.name,
+          },
+        ],
       };
     });
   }

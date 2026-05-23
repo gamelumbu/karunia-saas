@@ -25,6 +25,47 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+## Authorization
+
+Authorization uses RBAC as the baseline and ABAC policies as an optional
+override layer.
+
+- `SUPER_ADMIN` bypasses all tenant and permission checks.
+- Other roles only work inside the tenant selected in the JWT.
+- Role permissions allow normal access.
+- ABAC policy with `effect: "deny"` blocks access even when RBAC allows it.
+- ABAC policy with `effect: "allow"` can allow access when RBAC does not.
+
+Policies are stored in `master_policies.conditions` as JSON.
+
+```json
+{
+  "effect": "deny",
+  "roles": ["STAFF"],
+  "request": {
+    "method": "DELETE"
+  }
+}
+```
+
+Supported condition sections:
+
+- `roles`: any matching role is accepted.
+- `user`: match JWT user attributes such as `id`, `email`, `tenant_id`.
+- `tenant`: match current tenant attributes, currently `id`.
+- `request.method`: match HTTP method.
+- `request.params`, `request.query`, `request.body`: match request values.
+
+Supported value operators:
+
+```json
+{ "eq": "value" }
+{ "ne": "value" }
+{ "in": ["a", "b"] }
+{ "notIn": ["a", "b"] }
+{ "exists": true }
+```
+
 ## Project setup
 
 ```bash

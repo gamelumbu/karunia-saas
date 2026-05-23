@@ -11,6 +11,8 @@ import { RequestContextInterceptor } from './common/context/request-context.inte
 import { dataSourceOptions } from './database/config/data-source.config';
 import { PermissionModule } from './apps/module/permission.module';
 import { RedisModule } from './database/redis/redis.module';
+import { CommerceModule } from './apps/module/commerce.module';
+import { RoleModule } from './apps/module/role.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -22,6 +24,8 @@ import { RedisModule } from './database/redis/redis.module';
     TenantModule,
     PermissionModule,
     RedisModule,
+    CommerceModule,
+    RoleModule,
   ],
   controllers: [AppController],
   providers: [

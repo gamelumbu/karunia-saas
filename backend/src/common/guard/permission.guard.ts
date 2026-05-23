@@ -7,6 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { PERMISSION_KEY } from '../decorator/permission.decorator';
 import { PermissionService } from '@/apps/services/permission.service';
+import { AbacService } from '@/apps/services/abac.service';
 import { RedisService } from '@/database/redis/redis.service';
 import type { Request } from 'express';
 import type { CurrentUser } from '../context/request-context.service';
@@ -21,6 +22,7 @@ export class PermissionGuard implements CanActivate {
   constructor(
     private reflector: Reflector,
     private permissionService: PermissionService,
+    private abacService: AbacService,
     private redisService: RedisService,
   ) {}
 
@@ -39,7 +41,7 @@ export class PermissionGuard implements CanActivate {
       throw new ForbiddenException('User not found');
     }
 
-    if (user.roles?.some((role) => ['SUPER_ADMIN', 'OWNER'].includes(role))) {
+    if (user.roles?.includes('SUPER_ADMIN')) {
       return true;
     }
 
@@ -67,8 +69,36 @@ export class PermissionGuard implements CanActivate {
     }
     request.user.permissions = userPermissions;
 
-    const hasPermission = requiredPermissions.every((permission) =>
-      userPermissions.includes(permission),
+    const decisions = await Promise.all(
+      requiredPermissions.map(async (permission) => {
+        const abacDecision = await this.abacService.evaluate(permission, {
+          user,
+          request,
+        });
+
+        return {
+          permission,
+          abacDecision,
+          rbacAllowed:
+            user.roles?.includes('OWNER') ||
+            userPermissions.includes(permission),
+        };
+      }),
+    );
+
+    const denied = decisions.find(
+      (decision) => decision.abacDecision === 'deny',
+    );
+
+    if (denied) {
+      throw new ForbiddenException({
+        message: 'Forbidden: denied by ABAC policy',
+        permission: denied.permission,
+      });
+    }
+
+    const hasPermission = decisions.every(
+      (decision) => decision.rbacAllowed || decision.abacDecision === 'allow',
     );
 
     if (!hasPermission) {

@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { Policy } from './policy.entity';
 import { Membership } from './membership.entity';
+import { Role } from './role.entity';
 
 @Entity('master_tenants')
 export class Tenant {
@@ -25,6 +26,12 @@ export class Tenant {
   @Column({ type: 'varchar', length: 255, nullable: true })
   domain: string;
 
+  @Column({ type: 'varchar', length: 40, default: 'market' })
+  storefront_template: string;
+
+  @Column({ type: 'varchar', length: 20, default: '#0891b2' })
+  storefront_accent_color: string;
+
   @Column({ type: 'int', default: StatusAktif.ACTIVE })
   active_status: StatusAktif;
 
@@ -39,6 +46,9 @@ export class Tenant {
 
   @OneToMany(() => Membership, (member) => member.tenant)
   memberships: Membership[];
+
+  @OneToMany(() => Role, (role) => role.tenant)
+  roles: Role[];
 
   @OneToMany(() => Policy, (policy) => policy.tenant)
   policy: Policy[];

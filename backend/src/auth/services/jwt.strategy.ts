@@ -10,7 +10,7 @@ import type { CurrentUser } from '@/common/context/request-context.service';
 type JwtPayload = {
   sub: string;
   email: string;
-  tenant_id: string;
+  tenant_id?: string;
   roles?: string[];
 };
 
@@ -31,7 +31,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: JwtPayload): Promise<CurrentUser> {
     let roles = payload.roles ?? [];
 
-    if (!roles.length) {
+    if (!roles.length && payload.tenant_id) {
       const membership = await this.membershipRepository.findOne({
         where: {
           user_id: payload.sub,
@@ -46,7 +46,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return {
       id: payload.sub,
       email: payload.email,
-      tenant_id: payload.tenant_id,
+      tenant_id: payload.tenant_id ?? '',
       roles,
     };
   }

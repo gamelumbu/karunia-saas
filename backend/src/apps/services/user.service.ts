@@ -174,8 +174,7 @@ export class UserService {
       const savedUser = await manager.save(user);
 
       const roleId =
-        role_id ||
-        (await manager.findOne(Role, { where: { name: 'USER' } }))?.id;
+        role_id || (await this.getOrCreateUserRole(manager, tenantId)).id;
 
       if (!roleId) {
         throw new BadRequestException('Role not found');
@@ -195,6 +194,27 @@ export class UserService {
 
   async findOne(id: string): Promise<User> {
     return this.findUserOrFail(id);
+  }
+
+  private async getOrCreateUserRole(
+    manager: Repository<User>['manager'],
+    tenantId: string,
+  ): Promise<Role> {
+    const existing = await manager.findOne(Role, {
+      where: { name: 'USER', tenant_id: tenantId },
+    });
+
+    if (existing) {
+      return existing;
+    }
+
+    return manager.save(
+      manager.create(Role, {
+        name: 'USER',
+        description: 'Pengguna tenant dengan akses standar',
+        tenant_id: tenantId,
+      }),
+    );
   }
 
   async update(id: string, updateUser: UpdateUserDto): Promise<User> {

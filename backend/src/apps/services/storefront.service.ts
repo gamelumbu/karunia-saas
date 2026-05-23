@@ -1,0 +1,58 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Product } from '../entities/commerce/product.entity';
+import { Tenant } from '../entities/master/tenant.entity';
+import { StatusAktif } from '@/common/enum/StatusAktif';
+
+@Injectable()
+export class StorefrontService {
+  constructor(
+    @InjectRepository(Tenant)
+    private readonly tenantRepo: Repository<Tenant>,
+    @InjectRepository(Product)
+    private readonly productRepo: Repository<Product>,
+  ) {}
+
+  async findStores(search = '') {
+    const qb = this.tenantRepo
+      .createQueryBuilder('tenant')
+      .where('tenant.deleted_at IS NULL')
+      .andWhere('tenant.active_status = :active', {
+        active: StatusAktif.ACTIVE,
+      })
+      .orderBy('tenant.created_at', 'DESC');
+
+    if (search) {
+      qb.andWhere(
+        '(tenant.name ILIKE :search OR tenant.code ILIKE :search OR tenant.domain ILIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    return qb.getMany();
+  }
+
+  async findStore(slug: string) {
+    const store = await this.tenantRepo.findOne({
+      where: [
+        { domain: slug, active_status: StatusAktif.ACTIVE },
+        { code: slug, active_status: StatusAktif.ACTIVE },
+      ],
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    const products = await this.productRepo.find({
+      where: {
+        tenant_id: store.id,
+        active_status: StatusAktif.ACTIVE,
+      },
+      order: { created_at: 'DESC' },
+    });
+
+    return { store, products };
+  }
+}

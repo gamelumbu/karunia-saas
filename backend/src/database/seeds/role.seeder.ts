@@ -5,6 +5,7 @@ import { Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { Seeder } from 'typeorm-extension';
 import { Role } from '@/apps/entities/master/role.entity';
+import { Tenant } from '@/apps/entities/master/tenant.entity';
 
 type RoleSeedRow = {
   name: string;
@@ -27,29 +28,43 @@ export default class RoleSeeder implements Seeder {
       });
 
       const roleRepository = dataSource.getRepository(Role);
+      const tenantRepository = dataSource.getRepository(Tenant);
+      const tenants = await tenantRepository.find();
+
+      if (!tenants.length) {
+        this.logger.warn('Tidak ada tenant. Seed role dilewati.');
+        return;
+      }
+
       this.logger.log('Memulai upload data Role...');
 
       let successCount = 0;
 
-      for (const data of records) {
-        const existing = await roleRepository.findOne({
-          where: { name: data.name, description: data.description },
-        });
+      for (const tenant of tenants) {
+        for (const data of records) {
+          const existing = await roleRepository.findOne({
+            where: {
+              name: data.name,
+              tenant_id: tenant.id,
+            },
+          });
 
-        if (existing) {
-          this.logger.warn(
-            `Role ${data.name}:${data.description} sudah ada, dilewati.`,
-          );
-          continue;
+          if (existing) {
+            this.logger.warn(
+              `Role ${data.name} untuk tenant ${tenant.code} sudah ada, dilewati.`,
+            );
+            continue;
+          }
+
+          const role = roleRepository.create({
+            name: data.name,
+            description: data.description,
+            tenant_id: tenant.id,
+          });
+
+          await roleRepository.save(role);
+          successCount++;
         }
-
-        const role = roleRepository.create({
-          name: data.name,
-          description: data.description,
-        });
-
-        await roleRepository.save(role);
-        successCount++;
       }
 
       this.logger.log(

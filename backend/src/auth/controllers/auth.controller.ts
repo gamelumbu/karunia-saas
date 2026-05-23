@@ -4,6 +4,11 @@ import { LoginDto } from '../services/dto/login.dto';
 import { JwtAuthGuard } from '@/common/guard/jwt.guard';
 import { RegisterDto } from '../services/dto/register.dto';
 import { SelectTenantDto } from '../services/dto/select-tenant.dto';
+import type { CurrentUser } from '@/common/context/request-context.service';
+
+type AuthenticatedRequest = Express.Request & {
+  user: CurrentUser;
+};
 
 @Controller('auth')
 export class AuthController {
@@ -15,8 +20,9 @@ export class AuthController {
   }
 
   @Post('select-tenant')
-  selectTenant(@Body() dto: SelectTenantDto) {
-    return this.authService.selectTenant(dto.user_id, dto.tenant_id);
+  @UseGuards(JwtAuthGuard)
+  selectTenant(@Req() req: AuthenticatedRequest, @Body() dto: SelectTenantDto) {
+    return this.authService.selectTenant(req.user.id, dto.tenant_id);
   }
 
   @Post('register')

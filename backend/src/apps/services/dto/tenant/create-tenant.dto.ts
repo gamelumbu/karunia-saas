@@ -1,5 +1,14 @@
 import { StatusAktif } from '@/common/enum/StatusAktif';
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsEnum,
+  IsHexColor,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -16,8 +25,24 @@ export class CreateTenantDto {
 
   @IsOptional()
   @IsString({ message: 'domain must be string' })
-  @ApiPropertyOptional({ example: '' })
+  @MaxLength(255)
+  @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
+    message:
+      'domain must be a URL slug, for example buku-bahagia or toko-kopi',
+  })
+  @ApiPropertyOptional({ example: 'buku-bahagia' })
   domain?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['market', 'editorial', 'compact'])
+  @ApiPropertyOptional({ example: 'market', enum: ['market', 'editorial', 'compact'] })
+  storefront_template?: string;
+
+  @IsOptional()
+  @IsHexColor()
+  @ApiPropertyOptional({ example: '#0891b2' })
+  storefront_accent_color?: string;
 
   @Transform(({ value }: { value: unknown }) => {
     if (typeof value === 'string') {
