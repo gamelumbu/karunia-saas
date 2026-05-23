@@ -65,6 +65,9 @@ const {
   editProduct,
   resetProductForm,
   deleteProduct,
+  uploadProductImages,
+  removeProductImage,
+  setPrimaryProductImage,
   createRole,
   editRole,
   resetRoleForm,
@@ -540,9 +543,6 @@ function tenantAccessLabel(tenantId: string) {
                 type="text"
                 @input="setProductPrice(($event.target as HTMLInputElement).value)"
               />
-              <span v-if="!productForm.price" class="text-xs font-medium text-slate-500">
-                Masukkan angka harga produk.
-              </span>
             </label>
             <label class="grid gap-2 text-sm font-semibold text-slate-700">
               Stok
@@ -568,9 +568,37 @@ function tenantAccessLabel(tenantId: string) {
               </select>
             </label>
             <label class="grid gap-2 text-sm font-semibold text-slate-700">
-              URL gambar
-              <input v-model="productForm.image_url" class="field-input" type="url" />
+              URL gambar utama
+              <input v-model="productForm.image_url" class="field-input" type="url" placeholder="Opsional jika upload file" />
             </label>
+          </div>
+          <div class="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
+            <label class="grid gap-2 text-sm font-semibold text-slate-700">
+              Upload gambar produk
+              <input
+                class="block w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm file:mr-4 file:rounded-lg file:border-0 file:bg-slate-950 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
+                type="file"
+                accept="image/*"
+                multiple
+                :disabled="loading"
+                @change="uploadProductImages(($event.target as HTMLInputElement).files || [])"
+              />
+            </label>
+            <div v-if="productForm.image_urls.length" class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div v-for="url in productForm.image_urls" :key="url" class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <div class="aspect-square bg-slate-100">
+                  <img :src="url" :alt="productForm.name || 'Gambar produk'" class="h-full w-full object-cover" />
+                </div>
+                <div class="grid grid-cols-2 gap-2 p-2">
+                  <button class="secondary-action h-9 px-2 text-xs" type="button" @click="setPrimaryProductImage(url)">
+                    Utama
+                  </button>
+                  <button class="secondary-action h-9 px-2 text-xs text-red-700" type="button" @click="removeProductImage(url)">
+                    Hapus
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="mt-4 grid gap-4 xl:grid-cols-[1fr_1fr]">
             <label class="grid gap-2 text-sm font-semibold text-slate-700">
@@ -620,6 +648,9 @@ function tenantAccessLabel(tenantId: string) {
               </div>
               <h3 class="mt-3 font-semibold text-slate-950">{{ product.name }}</h3>
               <p class="mt-1 text-sm text-slate-500">{{ product.sku || product.slug }}</p>
+              <p v-if="product.image_urls?.length" class="mt-1 text-xs font-semibold text-slate-400">
+                {{ product.image_urls.length }} gambar
+              </p>
               <p class="mt-2 inline-flex rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">
                 {{ product.category === 'new_arrival' ? 'New Arrivals' : product.category === 'exclusive' ? 'Eksklusif' : 'Produk' }}
               </p>

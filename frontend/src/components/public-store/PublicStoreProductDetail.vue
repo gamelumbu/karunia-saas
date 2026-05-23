@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { computed, ref, watch } from 'vue'
 import { Heart, Package, ShoppingBag } from '@lucide/vue'
 import type { Product } from '../../types'
 import type { CartProduct } from './types'
 
-defineProps<{
+const props = defineProps<{
   product: Product | null
   relatedProducts: Product[]
   cartProducts: CartProduct[]
@@ -17,6 +18,37 @@ defineEmits<{
   toggleWishlist: [product: Product]
   addToCart: [product: Product]
 }>()
+
+const selectedImage = ref('')
+const zoomVisible = ref(false)
+const zoomPosition = ref('50% 50%')
+
+const productImages = computed(() => {
+  const urls = [
+    ...(props.product?.image_urls || []),
+    props.product?.image_url || '',
+  ].filter(Boolean)
+
+  return Array.from(new Set(urls))
+})
+
+watch(
+  () => props.product?.id,
+  () => {
+    selectedImage.value = productImages.value[0] || ''
+    zoomVisible.value = false
+  },
+  { immediate: true },
+)
+
+function moveZoom(event: MouseEvent) {
+  const target = event.currentTarget as HTMLElement
+  const rect = target.getBoundingClientRect()
+  const x = ((event.clientX - rect.left) / rect.width) * 100
+  const y = ((event.clientY - rect.top) / rect.height) * 100
+  zoomPosition.value = `${x}% ${y}%`
+  zoomVisible.value = true
+}
 </script>
 
 <template>
@@ -26,12 +58,44 @@ defineEmits<{
     </div>
     <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_420px]">
     <article v-if="product" class="grid gap-8 lg:grid-cols-[0.9fr_1fr]">
-      <div class="border border-zinc-200 bg-white p-3 shadow-sm">
-        <div class="aspect-[4/5]">
-          <img v-if="product.image_url" :src="product.image_url" :alt="product.name" class="h-full w-full object-cover" />
-          <div v-else class="grid h-full place-items-center text-zinc-400">
-            <Package class="h-16 w-16" />
+      <div>
+        <div class="relative border border-zinc-200 bg-white p-3 shadow-sm">
+          <div
+            class="aspect-[4/5] overflow-hidden bg-zinc-100"
+            @mousemove="moveZoom"
+            @mouseenter="zoomVisible = Boolean(selectedImage)"
+            @mouseleave="zoomVisible = false"
+          >
+            <img v-if="selectedImage" :src="selectedImage" :alt="product.name" class="h-full w-full object-cover" />
+            <div v-else class="grid h-full place-items-center text-zinc-400">
+              <Package class="h-16 w-16" />
+            </div>
           </div>
+          <div
+            v-if="zoomVisible && selectedImage"
+            class="pointer-events-none absolute left-[calc(100%+16px)] top-3 z-20 hidden h-80 w-80 border border-zinc-200 bg-white bg-no-repeat shadow-2xl lg:block"
+            :style="{
+              backgroundImage: `url(${selectedImage})`,
+              backgroundPosition: zoomPosition,
+              backgroundSize: '230%',
+            }"
+          />
+          <div
+            v-if="zoomVisible && selectedImage"
+            class="pointer-events-none absolute inset-3 hidden border-2 border-white/80 bg-white/10 shadow-inner lg:block"
+          />
+        </div>
+        <div v-if="productImages.length > 1" class="mt-3 grid grid-cols-4 gap-3">
+          <button
+            v-for="url in productImages"
+            :key="url"
+            class="aspect-square overflow-hidden border bg-zinc-100 transition"
+            :class="url === selectedImage ? 'border-zinc-950' : 'border-zinc-200 hover:border-zinc-500'"
+            type="button"
+            @click="selectedImage = url"
+          >
+            <img :src="url" :alt="product.name" class="h-full w-full object-cover" />
+          </button>
         </div>
       </div>
       <div class="lg:pt-8">

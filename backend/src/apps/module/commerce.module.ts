@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Product } from '../entities/commerce/product.entity';
+import { ProductImage } from '../entities/commerce/product-image.entity';
 import { Order } from '../entities/commerce/order.entity';
 import { OrderItem } from '../entities/commerce/order-item.entity';
 import { Tenant } from '../entities/master/tenant.entity';
@@ -14,7 +15,7 @@ import { PermissionModule } from './permission.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Product, Order, OrderItem, Tenant]),
+    TypeOrmModule.forFeature([Product, ProductImage, Order, OrderItem, Tenant]),
     PermissionModule,
   ],
   providers: [ProductService, OrderService, StorefrontService],

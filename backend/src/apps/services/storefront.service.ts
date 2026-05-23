@@ -55,11 +55,13 @@ export class StorefrontService {
 
     const products = await this.productRepo
       .createQueryBuilder('product')
+      .leftJoinAndSelect('product.images', 'image')
       .where('product.active_status = :active', {
         active: StatusAktif.ACTIVE,
       })
       .andWhere('product.tenant_id IN (:...storeIds)', { storeIds })
       .orderBy('product.created_at', 'DESC')
+      .addOrderBy('image.sort_order', 'ASC')
       .getMany();
 
     return {
@@ -74,7 +76,7 @@ export class StorefrontService {
           'Belanja produk dari semua toko aktif dalam satu katalog.',
         active_status: StatusAktif.ACTIVE,
       },
-      products,
+      products: this.withImageUrls(products),
       stores,
     };
   }
@@ -96,9 +98,23 @@ export class StorefrontService {
         tenant_id: store.id,
         active_status: StatusAktif.ACTIVE,
       },
+      relations: { images: true },
       order: { created_at: 'DESC' },
     });
 
-    return { store, products };
+    return { store, products: this.withImageUrls(products) };
+  }
+
+  private withImageUrls(products: Product[]) {
+    return products.map((product) => {
+      const images = [...(product.images || [])].sort(
+        (left, right) => left.sort_order - right.sort_order,
+      );
+      return {
+        ...product,
+        image_url: product.image_url || images[0]?.url,
+        image_urls: images.map((image) => image.url),
+      };
+    });
   }
 }

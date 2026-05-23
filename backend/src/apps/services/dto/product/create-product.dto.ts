@@ -68,4 +68,12 @@ export class CreateProductDto {
   @IsUrl({ require_tld: false })
   @MaxLength(500)
   image_url?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsUrl({ require_tld: false }, { each: true })
+  @MaxLength(500, { each: true })
+  image_urls?: string[];
 }

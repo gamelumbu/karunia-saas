@@ -7,10 +7,12 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Tenant } from '../master/tenant.entity';
+import { ProductImage } from './product-image.entity';
 
 export enum ProductCategory {
   NEW_ARRIVAL = 'new_arrival',
@@ -59,6 +61,11 @@ export class Product {
 
   @Column({ type: 'varchar', length: 500, nullable: true })
   image_url?: string;
+
+  @OneToMany(() => ProductImage, (image) => image.product, {
+    cascade: true,
+  })
+  images: ProductImage[];
 
   @Column({ type: 'int', default: StatusAktif.ACTIVE })
   active_status: StatusAktif;

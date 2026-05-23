@@ -67,6 +67,7 @@ export function useWorkspace() {
     priceDisplay: '',
     stock: 0,
     image_url: '',
+    image_urls: [] as string[],
   })
 
   const roleForm = reactive({
@@ -498,6 +499,7 @@ export function useWorkspace() {
             price: productForm.price,
             stock: Number(productForm.stock),
             image_url: productForm.image_url || undefined,
+            image_urls: productForm.image_urls,
           }),
         },
       )
@@ -534,6 +536,11 @@ export function useWorkspace() {
     productForm.priceDisplay = formatRupiah(product.price)
     productForm.stock = product.stock
     productForm.image_url = product.image_url || ''
+    productForm.image_urls = product.image_urls?.length
+      ? [...product.image_urls]
+      : product.image_url
+        ? [product.image_url]
+        : []
   }
 
   function resetProductForm() {
@@ -548,6 +555,52 @@ export function useWorkspace() {
     productForm.priceDisplay = ''
     productForm.stock = 0
     productForm.image_url = ''
+    productForm.image_urls = []
+  }
+
+  async function uploadProductImages(files: FileList | File[]) {
+    const imageFiles = Array.from(files).filter((file) =>
+      file.type.startsWith('image/'),
+    )
+    if (!imageFiles.length) return
+
+    loading.value = true
+    error.value = ''
+    notice.value = ''
+
+    try {
+      const formData = new FormData()
+      imageFiles.forEach((file) => formData.append('images', file))
+      const result = await request<ApiListResponse<{ url: string }>>(
+        '/product/uploads',
+        {
+          method: 'POST',
+          body: formData,
+        },
+      )
+      const uploadedUrls = (result.data || []).map((item) => item.url)
+      productForm.image_urls = Array.from(
+        new Set([...productForm.image_urls, ...uploadedUrls]),
+      )
+      productForm.image_url = productForm.image_url || productForm.image_urls[0] || ''
+      notice.value = `${uploadedUrls.length} gambar produk berhasil diupload.`
+    } catch (err) {
+      error.value = getMessage(err)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  function removeProductImage(url: string) {
+    productForm.image_urls = productForm.image_urls.filter((item) => item !== url)
+    if (productForm.image_url === url) {
+      productForm.image_url = productForm.image_urls[0] || ''
+    }
+  }
+
+  function setPrimaryProductImage(url: string) {
+    productForm.image_url = url
+    productForm.image_urls = Array.from(new Set([url, ...productForm.image_urls]))
   }
 
   async function deleteProduct(id: string) {
@@ -882,6 +935,9 @@ export function useWorkspace() {
     editProduct,
     resetProductForm,
     deleteProduct,
+    uploadProductImages,
+    removeProductImage,
+    setPrimaryProductImage,
     createRole,
     updateRole,
     editRole,

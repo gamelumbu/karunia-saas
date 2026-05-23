@@ -73,6 +73,13 @@ export type Product = {
   price: string
   stock: number
   image_url?: string | null
+  image_urls?: string[]
+  images?: Array<{
+    id: string
+    url: string
+    filename?: string | null
+    sort_order: number
+  }>
   active_status: number | string
   created_at?: string
 }
