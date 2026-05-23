@@ -12,7 +12,14 @@ import {
 } from 'typeorm';
 import { Tenant } from '../master/tenant.entity';
 
+export enum ProductCategory {
+  NEW_ARRIVAL = 'new_arrival',
+  EXCLUSIVE = 'exclusive',
+  PRODUCT = 'product',
+}
+
 @Index(['tenant_id'])
+@Index(['tenant_id', 'category'])
 @Index(['tenant_id', 'slug'], { unique: true })
 @Entity('commerce_products')
 export class Product {
@@ -37,6 +44,12 @@ export class Product {
 
   @Column({ type: 'varchar', length: 100, nullable: true })
   sku?: string;
+
+  @Column({ type: 'varchar', length: 40, default: ProductCategory.PRODUCT })
+  category: ProductCategory;
+
+  @Column({ type: 'jsonb', default: [] })
+  related_product_ids: string[];
 
   @Column({ type: 'numeric', precision: 14, scale: 2, default: 0 })
   price: string;

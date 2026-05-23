@@ -50,6 +50,12 @@ export type User = {
   email: string
   active_status: number | string
   created_at?: string
+  memberships?: Array<{
+    role?: {
+      id: string
+      name: string
+    }
+  }>
 }
 
 export type Product = {
@@ -59,6 +65,8 @@ export type Product = {
   slug: string
   description?: string | null
   sku?: string | null
+  category?: 'new_arrival' | 'exclusive' | 'product' | string
+  related_product_ids?: string[]
   price: string
   stock: number
   image_url?: string | null

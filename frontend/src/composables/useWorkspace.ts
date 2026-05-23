@@ -50,7 +50,7 @@ export function useWorkspace() {
     username: '',
     email: '',
     password: '',
-    role_id: '',
+    role_name: '',
   })
 
   const productForm = reactive({
@@ -58,7 +58,10 @@ export function useWorkspace() {
     slug: '',
     description: '',
     sku: '',
+    category: 'product',
+    related_product_ids: [] as string[],
     price: '',
+    priceDisplay: '',
     stock: 0,
     image_url: '',
   })
@@ -70,6 +73,10 @@ export function useWorkspace() {
 
   const selectedRoleId = ref('')
   const selectedPermissionIds = ref<string[]>([])
+  const editingTenantId = ref('')
+  const editingUserId = ref('')
+  const editingRoleId = ref('')
+  const editingProductId = ref('')
 
   const checkoutForm = reactive({
     product_id: '',
@@ -274,31 +281,118 @@ export function useWorkspace() {
     await loadStorefront()
   }
 
-  async function createTenant() {
+  async function saveTenant() {
     loading.value = true
     error.value = ''
     notice.value = ''
 
     try {
-      await request<ApiSingleResponse<Tenant>>('/tenant', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: tenantForm.name,
-          code: tenantForm.code,
-          domain: tenantForm.domain || undefined,
-          storefront_template: tenantForm.storefront_template,
-          storefront_accent_color: tenantForm.storefront_accent_color,
-          active_status: 1,
-        }),
-      })
+      const isEditing = Boolean(editingTenantId.value)
+      const payload = {
+        name: tenantForm.name,
+        code: tenantForm.code,
+        domain: tenantForm.domain || undefined,
+        storefront_template: tenantForm.storefront_template,
+        storefront_accent_color: tenantForm.storefront_accent_color,
+        active_status: 1,
+      }
 
-      tenantForm.name = ''
-      tenantForm.code = ''
-      tenantForm.domain = ''
-      tenantForm.storefront_template = 'market'
-      tenantForm.storefront_accent_color = '#0891b2'
-      notice.value =
-        'Tenant baru berhasil dibuat. Jika tenant belum muncul di pilihan, logout lalu login ulang.'
+      await request<ApiSingleResponse<Tenant>>(
+        editingTenantId.value ? `/tenant/${editingTenantId.value}` : '/tenant',
+        {
+          method: editingTenantId.value ? 'PATCH' : 'POST',
+          body: JSON.stringify(payload),
+        },
+      )
+
+      resetTenantForm()
+      notice.value = isEditing
+        ? 'Tenant berhasil diperbarui.'
+        : 'Tenant baru berhasil dibuat. Jika tenant belum muncul di pilihan, logout lalu login ulang.'
+      await loadWorkspace()
+    } catch (err) {
+      error.value = getMessage(err)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function createTenant() {
+    await saveTenant()
+  }
+
+  async function updateTenant() {
+    await saveTenant()
+  }
+
+  function editTenant(tenant: Tenant) {
+    editingTenantId.value = tenant.id
+    tenantForm.name = tenant.name
+    tenantForm.code = tenant.code
+    tenantForm.domain = tenant.domain || ''
+    tenantForm.storefront_template = tenant.storefront_template || 'market'
+    tenantForm.storefront_accent_color =
+      tenant.storefront_accent_color || '#0891b2'
+  }
+
+  function resetTenantForm() {
+    editingTenantId.value = ''
+    tenantForm.name = ''
+    tenantForm.code = ''
+    tenantForm.domain = ''
+    tenantForm.storefront_template = 'market'
+    tenantForm.storefront_accent_color = '#0891b2'
+  }
+
+  async function deleteTenant(id: string) {
+    if (!window.confirm('Hapus tenant ini?')) return
+
+    loading.value = true
+    error.value = ''
+    notice.value = ''
+
+    try {
+      await request(`/tenant/${id}`, { method: 'DELETE' })
+      notice.value = 'Tenant berhasil dihapus.'
+      await loadWorkspace()
+    } catch (err) {
+      error.value = getMessage(err)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function saveUser() {
+    loading.value = true
+    error.value = ''
+    notice.value = ''
+
+    try {
+      const isEditing = Boolean(editingUserId.value)
+      const payload: Record<string, unknown> = {
+        username: userForm.username,
+        email: userForm.email,
+        role_name: userForm.role_name || undefined,
+        tenant_id: selectedTenant.value || undefined,
+        active_status: 1,
+      }
+
+      if (userForm.password) {
+        payload.password = userForm.password
+      }
+
+      await request<ApiSingleResponse<User>>(
+        editingUserId.value ? `/user/${editingUserId.value}` : '/user',
+        {
+          method: editingUserId.value ? 'PATCH' : 'POST',
+          body: JSON.stringify(payload),
+        },
+      )
+
+      resetUserForm()
+      notice.value = isEditing
+        ? 'User berhasil diperbarui.'
+        : 'User baru berhasil dibuat.'
       await loadWorkspace()
     } catch (err) {
       error.value = getMessage(err)
@@ -308,28 +402,82 @@ export function useWorkspace() {
   }
 
   async function createUser() {
+    await saveUser()
+  }
+
+  async function updateUser() {
+    await saveUser()
+  }
+
+  function editUser(user: User) {
+    editingUserId.value = user.id
+    userForm.username = user.username
+    userForm.email = user.email
+    userForm.password = ''
+    userForm.role_name = user.memberships?.[0]?.role?.name || ''
+  }
+
+  function resetUserForm() {
+    editingUserId.value = ''
+    userForm.username = ''
+    userForm.email = ''
+    userForm.password = ''
+    userForm.role_name = ''
+  }
+
+  async function deleteUser(id: string) {
+    if (!window.confirm('Hapus user ini?')) return
+
     loading.value = true
     error.value = ''
     notice.value = ''
 
     try {
-      await request<ApiSingleResponse<User>>('/user', {
-        method: 'POST',
-        body: JSON.stringify({
-          username: userForm.username,
-          email: userForm.email,
-          password: userForm.password,
-          role_id: userForm.role_id || undefined,
-          tenant_id: selectedTenant.value || undefined,
-          active_status: 1,
-        }),
-      })
+      await request(`/user/${id}`, { method: 'DELETE' })
+      notice.value = 'User berhasil dihapus.'
+      await loadWorkspace()
+    } catch (err) {
+      error.value = getMessage(err)
+    } finally {
+      loading.value = false
+    }
+  }
 
-      userForm.username = ''
-      userForm.email = ''
-      userForm.password = ''
-      userForm.role_id = ''
-      notice.value = 'User baru berhasil dibuat.'
+  async function saveProduct() {
+    loading.value = true
+    error.value = ''
+    notice.value = ''
+
+    try {
+      const isEditing = Boolean(editingProductId.value)
+      if (!productForm.price) {
+        throw new Error('Harga produk wajib diisi dengan angka')
+      }
+
+      await request<ApiSingleResponse<Product>>(
+        editingProductId.value
+          ? `/product/${editingProductId.value}`
+          : '/product',
+        {
+          method: editingProductId.value ? 'PATCH' : 'POST',
+          body: JSON.stringify({
+            name: productForm.name,
+            slug: productForm.slug || undefined,
+            description: productForm.description || undefined,
+            sku: productForm.sku || undefined,
+            category: productForm.category,
+            related_product_ids: productForm.related_product_ids,
+            price: productForm.price,
+            stock: Number(productForm.stock),
+            image_url: productForm.image_url || undefined,
+          }),
+        },
+      )
+
+      resetProductForm()
+      notice.value = isEditing
+        ? 'Produk berhasil diperbarui.'
+        : 'Produk berhasil masuk ke katalog toko.'
       await loadWorkspace()
     } catch (err) {
       error.value = getMessage(err)
@@ -339,32 +487,51 @@ export function useWorkspace() {
   }
 
   async function createProduct() {
+    await saveProduct()
+  }
+
+  async function updateProduct() {
+    await saveProduct()
+  }
+
+  function editProduct(product: Product) {
+    editingProductId.value = product.id
+    productForm.name = product.name
+    productForm.slug = product.slug
+    productForm.description = product.description || ''
+    productForm.sku = product.sku || ''
+    productForm.category = product.category || 'product'
+    productForm.related_product_ids = product.related_product_ids || []
+    productForm.price = String(Number(product.price))
+    productForm.priceDisplay = formatRupiah(product.price)
+    productForm.stock = product.stock
+    productForm.image_url = product.image_url || ''
+  }
+
+  function resetProductForm() {
+    editingProductId.value = ''
+    productForm.name = ''
+    productForm.slug = ''
+    productForm.description = ''
+    productForm.sku = ''
+    productForm.category = 'product'
+    productForm.related_product_ids = []
+    productForm.price = ''
+    productForm.priceDisplay = ''
+    productForm.stock = 0
+    productForm.image_url = ''
+  }
+
+  async function deleteProduct(id: string) {
+    if (!window.confirm('Hapus produk ini?')) return
+
     loading.value = true
     error.value = ''
     notice.value = ''
 
     try {
-      await request<ApiSingleResponse<Product>>('/product', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: productForm.name,
-          slug: productForm.slug || undefined,
-          description: productForm.description || undefined,
-          sku: productForm.sku || undefined,
-          price: productForm.price,
-          stock: Number(productForm.stock),
-          image_url: productForm.image_url || undefined,
-        }),
-      })
-
-      productForm.name = ''
-      productForm.slug = ''
-      productForm.description = ''
-      productForm.sku = ''
-      productForm.price = ''
-      productForm.stock = 0
-      productForm.image_url = ''
-      notice.value = 'Produk berhasil masuk ke katalog toko.'
+      await request(`/product/${id}`, { method: 'DELETE' })
+      notice.value = 'Produk berhasil dihapus.'
       await loadWorkspace()
     } catch (err) {
       error.value = getMessage(err)
@@ -373,25 +540,73 @@ export function useWorkspace() {
     }
   }
 
-  async function createRole() {
+  async function saveRole() {
     loading.value = true
     error.value = ''
     notice.value = ''
 
     try {
-      const result = await request<ApiSingleResponse<Role>>('/role', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: roleForm.name,
-          description: roleForm.description || undefined,
-        }),
-      })
+      const isEditing = Boolean(editingRoleId.value)
+      const result = await request<ApiSingleResponse<Role>>(
+        editingRoleId.value ? `/role/${editingRoleId.value}` : '/role',
+        {
+          method: editingRoleId.value ? 'PATCH' : 'POST',
+          body: JSON.stringify({
+            name: roleForm.name,
+            description: roleForm.description || undefined,
+          }),
+        },
+      )
 
-      roleForm.name = ''
-      roleForm.description = ''
-      notice.value = 'Role maintenance berhasil dibuat.'
+      resetRoleForm()
+      notice.value = isEditing
+        ? 'Role berhasil diperbarui.'
+        : 'Role maintenance berhasil dibuat.'
       await loadWorkspace()
       selectRole(result.data.id)
+    } catch (err) {
+      error.value = getMessage(err)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function createRole() {
+    await saveRole()
+  }
+
+  async function updateRole() {
+    await saveRole()
+  }
+
+  function editRole(role: Role) {
+    editingRoleId.value = role.id
+    roleForm.name = role.name
+    roleForm.description = role.description || ''
+    selectRole(role.id)
+  }
+
+  function resetRoleForm() {
+    editingRoleId.value = ''
+    roleForm.name = ''
+    roleForm.description = ''
+  }
+
+  async function deleteRole(id: string) {
+    if (!window.confirm('Hapus role ini?')) return
+
+    loading.value = true
+    error.value = ''
+    notice.value = ''
+
+    try {
+      await request(`/role/${id}`, { method: 'DELETE' })
+      notice.value = 'Role berhasil dihapus.'
+      if (selectedRoleId.value === id) {
+        selectedRoleId.value = ''
+        selectedPermissionIds.value = []
+      }
+      await loadWorkspace()
     } catch (err) {
       error.value = getMessage(err)
     } finally {
@@ -514,6 +729,20 @@ export function useWorkspace() {
     return tenant?.domain || tenant?.code
   }
 
+  function setProductPrice(value: string) {
+    const digits = value.replace(/\D/g, '')
+    productForm.price = digits
+    productForm.priceDisplay = digits ? formatRupiah(digits) : ''
+  }
+
+  function formatRupiah(value: string | number) {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      maximumFractionDigits: 0,
+    }).format(Number(value || 0))
+  }
+
   return {
     activeView,
     authMode,
@@ -530,6 +759,10 @@ export function useWorkspace() {
     checkoutForm,
     selectedRoleId,
     selectedPermissionIds,
+    editingTenantId,
+    editingUserId,
+    editingRoleId,
+    editingProductId,
     session,
     tenants,
     users,
@@ -547,13 +780,30 @@ export function useWorkspace() {
     selectTenant,
     loadWorkspace,
     createTenant,
+    updateTenant,
+    editTenant,
+    resetTenantForm,
+    deleteTenant,
     createUser,
+    updateUser,
+    editUser,
+    resetUserForm,
+    deleteUser,
     createProduct,
+    updateProduct,
+    editProduct,
+    resetProductForm,
+    deleteProduct,
     createRole,
+    updateRole,
+    editRole,
+    resetRoleForm,
+    deleteRole,
     selectRole,
     saveRolePermissions,
     loadStorefront,
     createCheckoutOrder,
+    setProductPrice,
     logout,
   }
 }

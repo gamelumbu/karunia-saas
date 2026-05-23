@@ -2,6 +2,7 @@
 import {
   Building2,
   CheckCircle2,
+  Edit3,
   LayoutDashboard,
   LogOut,
   Package,
@@ -10,8 +11,10 @@ import {
   ReceiptText,
   ShieldCheck,
   ShoppingBag,
+  Trash2,
   UserPlus,
   UsersRound,
+  X,
 } from '@lucide/vue'
 import DataTable from './DataTable.vue'
 import type { useWorkspace } from '../composables/useWorkspace'
@@ -33,6 +36,10 @@ const {
   checkoutForm,
   selectedRoleId,
   selectedPermissionIds,
+  editingTenantId,
+  editingUserId,
+  editingRoleId,
+  editingProductId,
   session,
   tenants,
   users,
@@ -47,12 +54,25 @@ const {
   selectTenant,
   loadWorkspace,
   createTenant,
+  editTenant,
+  resetTenantForm,
+  deleteTenant,
   createUser,
+  editUser,
+  resetUserForm,
+  deleteUser,
   createProduct,
+  editProduct,
+  resetProductForm,
+  deleteProduct,
   createRole,
+  editRole,
+  resetRoleForm,
+  deleteRole,
   selectRole,
   saveRolePermissions,
   createCheckoutOrder,
+  setProductPrice,
   logout,
 } = props.workspace
 
@@ -193,7 +213,7 @@ function viewTitle() {
           <div class="mb-5 flex items-center gap-3">
             <Building2 class="h-5 w-5 text-cyan-700" />
             <div>
-              <h2 class="text-lg font-semibold">Tambah tenant</h2>
+              <h2 class="text-lg font-semibold">{{ editingTenantId ? 'Update tenant' : 'Tambah tenant' }}</h2>
               <p class="text-sm text-slate-500">Domain adalah slug halaman toko, misalnya /buku-bahagia.</p>
             </div>
           </div>
@@ -211,8 +231,13 @@ function viewTitle() {
               <input v-model="tenantForm.domain" class="field-input" type="text" placeholder="buku-bahagia" />
             </label>
             <button class="primary-action" type="submit" :disabled="loading">
-              <Plus class="h-4 w-4" />
-              Simpan
+              <Edit3 v-if="editingTenantId" class="h-4 w-4" />
+              <Plus v-else class="h-4 w-4" />
+              {{ editingTenantId ? 'Update' : 'Simpan' }}
+            </button>
+            <button v-if="editingTenantId" class="secondary-action" type="button" @click="resetTenantForm">
+              <X class="h-4 w-4" />
+              Batal
             </button>
           </div>
           <div class="mt-4 grid gap-4 lg:grid-cols-[1fr_220px]">
@@ -230,7 +255,43 @@ function viewTitle() {
             </label>
           </div>
         </form>
-        <DataTable title="Daftar tenant" :rows="tenants" kind="tenant" />
+        <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <header class="border-b border-slate-200 px-5 py-4">
+            <p class="text-xs font-semibold uppercase text-cyan-700">Tenant</p>
+            <h2 class="mt-1 text-lg font-semibold tracking-tight text-slate-950">Daftar tenant</h2>
+          </header>
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[760px] border-collapse">
+              <thead>
+                <tr class="bg-slate-50/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <th class="px-5 py-3">Nama</th>
+                  <th class="px-5 py-3">Kode</th>
+                  <th class="px-5 py-3">Domain</th>
+                  <th class="px-5 py-3">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="tenant in tenants" :key="tenant.id" class="border-t border-slate-100 text-sm">
+                  <td class="px-5 py-4 font-semibold text-slate-950">{{ tenant.name }}</td>
+                  <td class="px-5 py-4 text-slate-600">{{ tenant.code }}</td>
+                  <td class="px-5 py-4 text-slate-600">/{{ tenant.domain || tenant.code }}</td>
+                  <td class="px-5 py-4">
+                    <div class="flex flex-wrap gap-2">
+                      <button class="secondary-action h-9 px-3" type="button" @click="editTenant(tenant)">
+                        <Edit3 class="h-4 w-4" />
+                        Edit
+                      </button>
+                      <button class="secondary-action h-9 px-3 text-red-700" type="button" @click="deleteTenant(tenant.id)">
+                        <Trash2 class="h-4 w-4" />
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
       </section>
 
       <section v-if="activeView === 'users'" class="mt-4 grid gap-4">
@@ -238,8 +299,8 @@ function viewTitle() {
           <div class="mb-5 flex items-center gap-3">
             <UserPlus class="h-5 w-5 text-cyan-700" />
             <div>
-              <h2 class="text-lg font-semibold">Tambah user</h2>
-              <p class="text-sm text-slate-500">Role ID opsional. Kosongkan untuk memakai role default backend.</p>
+              <h2 class="text-lg font-semibold">{{ editingUserId ? 'Update user' : 'Tambah user' }}</h2>
+              <p class="text-sm text-slate-500">Pilih nama role. Password wajib hanya saat tambah user baru.</p>
             </div>
           </div>
           <div class="grid gap-4 xl:grid-cols-[1fr_1fr_0.8fr_1fr_auto] xl:items-end">
@@ -253,19 +314,65 @@ function viewTitle() {
             </label>
             <label class="grid gap-2 text-sm font-semibold text-slate-700">
               Password
-              <input v-model="userForm.password" class="field-input" type="password" required />
+              <input v-model="userForm.password" class="field-input" type="password" :required="!editingUserId" />
             </label>
             <label class="grid gap-2 text-sm font-semibold text-slate-700">
-              Role ID
-              <input v-model="userForm.role_id" class="field-input" type="text" />
+              Role
+              <select v-model="userForm.role_name" class="field-input">
+                <option value="">Default USER</option>
+                <option v-for="role in roles" :key="role.id" :value="role.name">
+                  {{ role.name }}
+                </option>
+              </select>
             </label>
             <button class="primary-action" type="submit" :disabled="loading">
-              <Plus class="h-4 w-4" />
-              Simpan
+              <Edit3 v-if="editingUserId" class="h-4 w-4" />
+              <Plus v-else class="h-4 w-4" />
+              {{ editingUserId ? 'Update' : 'Simpan' }}
+            </button>
+            <button v-if="editingUserId" class="secondary-action" type="button" @click="resetUserForm">
+              <X class="h-4 w-4" />
+              Batal
             </button>
           </div>
         </form>
-        <DataTable title="Daftar user" :rows="users" kind="user" />
+        <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <header class="border-b border-slate-200 px-5 py-4">
+            <p class="text-xs font-semibold uppercase text-cyan-700">User</p>
+            <h2 class="mt-1 text-lg font-semibold tracking-tight text-slate-950">Daftar user</h2>
+          </header>
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[760px] border-collapse">
+              <thead>
+                <tr class="bg-slate-50/80 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <th class="px-5 py-3">Username</th>
+                  <th class="px-5 py-3">Email</th>
+                  <th class="px-5 py-3">Role</th>
+                  <th class="px-5 py-3">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="user in users" :key="user.id" class="border-t border-slate-100 text-sm">
+                  <td class="px-5 py-4 font-semibold text-slate-950">{{ user.username }}</td>
+                  <td class="px-5 py-4 text-slate-600">{{ user.email }}</td>
+                  <td class="px-5 py-4 text-slate-600">{{ user.memberships?.[0]?.role?.name || '-' }}</td>
+                  <td class="px-5 py-4">
+                    <div class="flex flex-wrap gap-2">
+                      <button class="secondary-action h-9 px-3" type="button" @click="editUser(user)">
+                        <Edit3 class="h-4 w-4" />
+                        Edit
+                      </button>
+                      <button class="secondary-action h-9 px-3 text-red-700" type="button" @click="deleteUser(user.id)">
+                        <Trash2 class="h-4 w-4" />
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
       </section>
 
       <section v-if="activeView === 'roles'" class="mt-4 grid gap-4 xl:grid-cols-[360px_1fr]">
@@ -274,22 +381,34 @@ function viewTitle() {
             <div class="mb-5 flex items-center gap-3">
               <ShieldCheck class="h-5 w-5 text-cyan-700" />
               <div>
-                <h2 class="text-lg font-semibold">Tambah role</h2>
+                <h2 class="text-lg font-semibold">{{ editingRoleId ? 'Update role' : 'Tambah role' }}</h2>
                 <p class="text-sm text-slate-500">Role untuk staff maintenance toko.</p>
               </div>
             </div>
             <div class="grid gap-4">
               <label class="grid gap-2 text-sm font-semibold text-slate-700">
                 Nama role
-                <input v-model="roleForm.name" class="field-input" type="text" placeholder="PRODUCT_ADMIN" required />
+                <input
+                  :value="roleForm.name"
+                  class="field-input uppercase"
+                  type="text"
+                  placeholder="PRODUCT_ADMIN"
+                  required
+                  @input="roleForm.name = ($event.target as HTMLInputElement).value.toUpperCase()"
+                />
               </label>
               <label class="grid gap-2 text-sm font-semibold text-slate-700">
                 Deskripsi
                 <input v-model="roleForm.description" class="field-input" type="text" />
               </label>
               <button class="primary-action" type="submit" :disabled="loading">
-                <Plus class="h-4 w-4" />
-                Simpan role
+                <Edit3 v-if="editingRoleId" class="h-4 w-4" />
+                <Plus v-else class="h-4 w-4" />
+                {{ editingRoleId ? 'Update role' : 'Simpan role' }}
+              </button>
+              <button v-if="editingRoleId" class="secondary-action" type="button" @click="resetRoleForm">
+                <X class="h-4 w-4" />
+                Batal
               </button>
             </div>
           </form>
@@ -307,6 +426,16 @@ function viewTitle() {
               >
                 <span class="block font-semibold">{{ role.name }}</span>
                 <span class="block text-xs opacity-75">{{ role.description || 'Tanpa deskripsi' }}</span>
+                <span class="mt-3 flex gap-2">
+                  <button class="inline-flex h-8 items-center gap-1 rounded-lg bg-white/10 px-2 text-xs font-semibold" type="button" @click.stop="editRole(role)">
+                    <Edit3 class="h-3.5 w-3.5" />
+                    Edit
+                  </button>
+                  <button class="inline-flex h-8 items-center gap-1 rounded-lg bg-white/10 px-2 text-xs font-semibold" type="button" @click.stop="deleteRole(role.id)">
+                    <Trash2 class="h-3.5 w-3.5" />
+                    Delete
+                  </button>
+                </span>
               </button>
             </div>
           </article>
@@ -356,7 +485,7 @@ function viewTitle() {
           <div class="mb-5 flex items-center gap-3">
             <Package class="h-5 w-5 text-cyan-700" />
             <div>
-              <h2 class="text-lg font-semibold">Tambah produk</h2>
+              <h2 class="text-lg font-semibold">{{ editingProductId ? 'Update produk' : 'Tambah produk' }}</h2>
               <p class="text-sm text-slate-500">Produk akan muncul di storefront public toko aktif.</p>
             </div>
           </div>
@@ -367,15 +496,30 @@ function viewTitle() {
             </label>
             <label class="grid gap-2 text-sm font-semibold text-slate-700">
               Harga
-              <input v-model="productForm.price" class="field-input" type="number" min="0" required />
+              <input
+                :value="productForm.priceDisplay"
+                class="field-input"
+                inputmode="numeric"
+                placeholder="Rp 0"
+                type="text"
+                @input="setProductPrice(($event.target as HTMLInputElement).value)"
+              />
+              <span v-if="!productForm.price" class="text-xs font-medium text-slate-500">
+                Masukkan angka harga produk.
+              </span>
             </label>
             <label class="grid gap-2 text-sm font-semibold text-slate-700">
               Stok
               <input v-model.number="productForm.stock" class="field-input" type="number" min="0" required />
             </label>
             <button class="primary-action" type="submit" :disabled="loading">
-              <Plus class="h-4 w-4" />
-              Simpan
+              <Edit3 v-if="editingProductId" class="h-4 w-4" />
+              <Plus v-else class="h-4 w-4" />
+              {{ editingProductId ? 'Update' : 'Simpan' }}
+            </button>
+            <button v-if="editingProductId" class="secondary-action" type="button" @click="resetProductForm">
+              <X class="h-4 w-4" />
+              Batal
             </button>
           </div>
           <div class="mt-4 grid gap-4 xl:grid-cols-[0.7fr_1fr_1fr]">
@@ -384,12 +528,34 @@ function viewTitle() {
               <input v-model="productForm.sku" class="field-input" type="text" />
             </label>
             <label class="grid gap-2 text-sm font-semibold text-slate-700">
+              Kategori
+              <select v-model="productForm.category" class="field-input">
+                <option value="new_arrival">New Arrivals</option>
+                <option value="exclusive">Eksklusif</option>
+                <option value="product">Produk</option>
+              </select>
+            </label>
+            <label class="grid gap-2 text-sm font-semibold text-slate-700">
               URL gambar
               <input v-model="productForm.image_url" class="field-input" type="url" />
             </label>
+          </div>
+          <div class="mt-4 grid gap-4 xl:grid-cols-[1fr_1fr]">
             <label class="grid gap-2 text-sm font-semibold text-slate-700">
               Slug
               <input v-model="productForm.slug" class="field-input" type="text" placeholder="otomatis jika kosong" />
+            </label>
+            <label class="grid gap-2 text-sm font-semibold text-slate-700">
+              Produk terkait
+              <select v-model="productForm.related_product_ids" class="min-h-24 rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-950 shadow-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" multiple>
+                <option
+                  v-for="product in products.filter((item) => item.id !== editingProductId)"
+                  :key="product.id"
+                  :value="product.id"
+                >
+                  {{ product.name }}
+                </option>
+              </select>
             </label>
           </div>
           <label class="mt-4 grid gap-2 text-sm font-semibold text-slate-700">
@@ -416,11 +582,24 @@ function viewTitle() {
               </div>
               <h3 class="mt-3 font-semibold text-slate-950">{{ product.name }}</h3>
               <p class="mt-1 text-sm text-slate-500">{{ product.sku || product.slug }}</p>
+              <p class="mt-2 inline-flex rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">
+                {{ product.category === 'new_arrival' ? 'New Arrivals' : product.category === 'exclusive' ? 'Eksklusif' : 'Produk' }}
+              </p>
               <div class="mt-3 flex items-center justify-between gap-3">
                 <strong class="text-slate-950">{{ formatCurrency(product.price) }}</strong>
                 <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
                   Stok {{ product.stock }}
                 </span>
+              </div>
+              <div class="mt-4 flex gap-2">
+                <button class="secondary-action h-9 flex-1 px-3" type="button" @click="editProduct(product)">
+                  <Edit3 class="h-4 w-4" />
+                  Edit
+                </button>
+                <button class="secondary-action h-9 flex-1 px-3 text-red-700" type="button" @click="deleteProduct(product.id)">
+                  <Trash2 class="h-4 w-4" />
+                  Delete
+                </button>
               </div>
             </article>
           </div>

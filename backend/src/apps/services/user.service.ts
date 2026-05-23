@@ -139,7 +139,7 @@ export class UserService {
   }
 
   async create(createUser: CreateUserDto): Promise<User> {
-    const { username, email, password, role_id } = createUser;
+    const { username, email, password, role_name } = createUser;
 
     await this.validateUniqueUsernameEmail(username, email);
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -173,10 +173,12 @@ export class UserService {
 
       const savedUser = await manager.save(user);
 
-      const roleId =
-        role_id || (await this.getOrCreateUserRole(manager, tenantId)).id;
+      const role =
+        role_name !== undefined && role_name.trim() !== ''
+          ? await this.findRoleByNameOrFail(manager, tenantId, role_name)
+          : await this.getOrCreateUserRole(manager, tenantId);
 
-      if (!roleId) {
+      if (!role?.id) {
         throw new BadRequestException('Role not found');
       }
 
@@ -184,7 +186,7 @@ export class UserService {
         manager.create(Membership, {
           user_id: savedUser.id,
           tenant_id: tenantId,
-          role_id: roleId,
+          role_id: role.id,
         }),
       );
 
@@ -217,6 +219,26 @@ export class UserService {
     );
   }
 
+  private async findRoleByNameOrFail(
+    manager: Repository<User>['manager'],
+    tenantId: string,
+    roleName: string,
+  ): Promise<Role> {
+    const role = await manager
+      .createQueryBuilder(Role, 'role')
+      .where('role.tenant_id = :tenantId', { tenantId })
+      .andWhere('LOWER(role.name) = LOWER(:roleName)', {
+        roleName: roleName.trim(),
+      })
+      .getOne();
+
+    if (!role) {
+      throw new BadRequestException(`Role "${roleName}" not found`);
+    }
+
+    return role;
+  }
+
   async update(id: string, updateUser: UpdateUserDto): Promise<User> {
     const isSuperAdmin = RequestContextService.isSuperAdmin();
 
@@ -239,7 +261,6 @@ export class UserService {
 
     if (!isSuperAdmin) {
       delete updateUser.tenant_id;
-      delete updateUser.role_id;
     } else if (updateUser.tenant_id) {
       const tenant = await this.tenantRepo.findOne({
         where: { id: updateUser.tenant_id },
@@ -258,14 +279,23 @@ export class UserService {
     return await this.userRepo.manager.transaction(async (manager) => {
       const savedUser = await manager.save(user);
 
-      if (isSuperAdmin && (updateUser.tenant_id || updateUser.role_id)) {
+      if (updateUser.tenant_id || updateUser.role_name) {
         const membership = await manager.findOne(Membership, {
-          where: { user_id: id },
+          where: isSuperAdmin
+            ? { user_id: id }
+            : { user_id: id, tenant_id: RequestContextService.getTenantId() },
         });
 
         if (membership) {
           if (updateUser.tenant_id) membership.tenant_id = updateUser.tenant_id;
-          if (updateUser.role_id) membership.role_id = updateUser.role_id;
+          if (updateUser.role_name) {
+            const role = await this.findRoleByNameOrFail(
+              manager,
+              membership.tenant_id,
+              updateUser.role_name,
+            );
+            membership.role_id = role.id;
+          }
           await manager.save(membership);
         }
       }

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -14,6 +15,7 @@ import { Permissions } from '@/common/decorator/permission.decorator';
 import { RoleService } from '../services/role.service';
 import { CreateRoleDto } from '../services/dto/role/create-role.dto';
 import { SetRolePermissionsDto } from '../services/dto/role/set-role-permissions.dto';
+import { UpdateRoleDto } from '../services/dto/role/update-role.dto';
 
 @UseGuards(JwtAuthGuard, PermissionGuard)
 @Controller('role')
@@ -47,6 +49,29 @@ export class RoleController {
       success: true,
       message: 'Role created successfully',
       data: await this.roleService.create(dto),
+    };
+  }
+
+  @Patch(':id')
+  @Permissions('role.update')
+  async update(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: UpdateRoleDto,
+  ) {
+    return {
+      success: true,
+      message: 'Role updated successfully',
+      data: await this.roleService.update(id, dto),
+    };
+  }
+
+  @Delete(':id')
+  @Permissions('role.delete')
+  async remove(@Param('id', new ParseUUIDPipe()) id: string) {
+    await this.roleService.remove(id);
+    return {
+      success: true,
+      message: 'Role deleted successfully',
     };
   }
 

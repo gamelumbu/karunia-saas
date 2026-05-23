@@ -5,7 +5,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Product } from '../entities/commerce/product.entity';
+import {
+  Product,
+  ProductCategory,
+} from '../entities/commerce/product.entity';
 import { CreateProductDto } from './dto/product/create-product.dto';
 import { UpdateProductDto } from './dto/product/update-product.dto';
 import { RequestContextService } from '@/common/context/request-context.service';
@@ -58,6 +61,8 @@ export class ProductService {
       ...dto,
       slug,
       tenant_id: tenantId,
+      category: dto.category || ProductCategory.PRODUCT,
+      related_product_ids: dto.related_product_ids || [],
       active_status: StatusAktif.ACTIVE,
     });
 
@@ -76,6 +81,10 @@ export class ProductService {
     if (dto.name !== undefined) product.name = dto.name;
     if (dto.description !== undefined) product.description = dto.description;
     if (dto.sku !== undefined) product.sku = dto.sku;
+    if (dto.category !== undefined) product.category = dto.category;
+    if (dto.related_product_ids !== undefined) {
+      product.related_product_ids = dto.related_product_ids;
+    }
     if (dto.price !== undefined) product.price = dto.price;
     if (dto.stock !== undefined) product.stock = dto.stock;
     if (dto.image_url !== undefined) product.image_url = dto.image_url;

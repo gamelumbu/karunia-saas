@@ -1,14 +1,19 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ArrayUnique,
   IsInt,
+  IsIn,
+  IsArray,
   IsNotEmpty,
   IsNumberString,
   IsOptional,
   IsString,
   IsUrl,
+  IsUUID,
   MaxLength,
   Min,
 } from 'class-validator';
+import { ProductCategory } from '@/apps/entities/commerce/product.entity';
 
 export class CreateProductDto {
   @ApiProperty({ example: 'Kaos Basic Hitam' })
@@ -33,6 +38,21 @@ export class CreateProductDto {
   @IsString()
   @MaxLength(100)
   sku?: string;
+
+  @ApiPropertyOptional({
+    example: ProductCategory.PRODUCT,
+    enum: ProductCategory,
+  })
+  @IsOptional()
+  @IsIn(Object.values(ProductCategory))
+  category?: ProductCategory;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsUUID('4', { each: true })
+  related_product_ids?: string[];
 
   @ApiProperty({ example: '99000' })
   @IsNumberString()

@@ -27,9 +27,9 @@ export class CreateUserDto {
   password: string;
 
   @IsOptional()
-  @IsUUID('4', { message: 'role_id must be a valid UUID' })
-  @ApiPropertyOptional({ example: '' })
-  role_id?: string;
+  @IsString({ message: 'role_name must be string' })
+  @ApiPropertyOptional({ example: 'STAFF' })
+  role_name?: string;
 
   @Transform(({ value }: { value: unknown }) => {
     if (typeof value === 'string') {
