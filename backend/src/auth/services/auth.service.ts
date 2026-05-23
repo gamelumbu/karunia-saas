@@ -11,6 +11,7 @@ import { Membership } from '@/apps/entities/master/membership.entity';
 import { Permission } from '@/apps/entities/master/permission.entity';
 import { RolePermission } from '@/apps/entities/master/role_permission.entity';
 import { StatusAktif } from '@/common/enum/StatusAktif';
+import type { CurrentUser } from '@/common/context/request-context.service';
 
 @Injectable()
 export class AuthService {
@@ -73,14 +74,33 @@ export class AuthService {
     };
   }
 
-  async selectTenant(userId: string, tenantId: string) {
+  async selectTenant(currentUser: CurrentUser, tenantId: string) {
     const user = await this.userRepository.findOne({
-      where: { id: userId },
+      where: { id: currentUser.id },
       relations: ['memberships', 'memberships.role', 'memberships.tenant'],
     });
 
     if (!user) {
       throw new UnauthorizedException('User not found');
+    }
+
+    if (currentUser.roles?.includes('SUPER_ADMIN')) {
+      const tenant = await this.userRepository.manager.findOne(Tenant, {
+        where: { id: tenantId },
+      });
+
+      if (!tenant) {
+        throw new UnauthorizedException('Tenant not found');
+      }
+
+      return {
+        access_token: this.jwtService.sign({
+          sub: user.id,
+          email: user.email,
+          tenant_id: tenant.id,
+          roles: ['SUPER_ADMIN'],
+        }),
+      };
     }
 
     const membership = user.memberships.find((m) => m.tenant_id === tenantId);
@@ -98,6 +118,25 @@ export class AuthService {
 
     return {
       access_token: this.jwtService.sign(payload),
+    };
+  }
+
+  async getUserTenants(userId: string) {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['memberships', 'memberships.role', 'memberships.tenant'],
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    return {
+      tenants: user.memberships.map((m) => ({
+        tenant_id: m.tenant_id,
+        tenant_name: m.tenant?.name,
+        role: m.role?.name,
+      })),
     };
   }
 

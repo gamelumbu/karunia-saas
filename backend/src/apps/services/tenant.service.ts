@@ -177,6 +177,9 @@ export class TenantService {
         storefront_template: createTenant.storefront_template || 'market',
         storefront_accent_color:
           createTenant.storefront_accent_color || '#0891b2',
+        storefront_logo_url: createTenant.storefront_logo_url,
+        storefront_banner_url: createTenant.storefront_banner_url,
+        storefront_tagline: createTenant.storefront_tagline,
       });
       const savedTenant = await manager.save(tenant);
 
@@ -226,6 +229,15 @@ export class TenantService {
     }
     if (updateTenant.storefront_accent_color) {
       tenant.storefront_accent_color = updateTenant.storefront_accent_color;
+    }
+    if (updateTenant.storefront_logo_url !== undefined) {
+      tenant.storefront_logo_url = updateTenant.storefront_logo_url;
+    }
+    if (updateTenant.storefront_banner_url !== undefined) {
+      tenant.storefront_banner_url = updateTenant.storefront_banner_url;
+    }
+    if (updateTenant.storefront_tagline !== undefined) {
+      tenant.storefront_tagline = updateTenant.storefront_tagline;
     }
     if (updateTenant.active_status && isSuperAdmin) {
       tenant.active_status = updateTenant.active_status;

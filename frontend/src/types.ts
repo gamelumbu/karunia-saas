@@ -40,6 +40,9 @@ export type Tenant = {
   domain?: string | null
   storefront_template?: 'market' | 'editorial' | 'compact' | string
   storefront_accent_color?: string | null
+  storefront_logo_url?: string | null
+  storefront_banner_url?: string | null
+  storefront_tagline?: string | null
   active_status: number | string
   created_at?: string
 }
@@ -90,6 +93,12 @@ export type Order = {
   customer_email: string
   customer_phone?: string | null
   shipping_address: string
+  shipping_province?: string | null
+  shipping_city?: string | null
+  shipping_district?: string | null
+  shipping_postal_code?: string | null
+  shipping_method?: string | null
+  payment_method?: string | null
   total_amount: string
   status: string
   items?: OrderItem[]
@@ -99,6 +108,7 @@ export type Order = {
 export type Storefront = {
   store: Tenant
   products: Product[]
+  stores?: Tenant[]
 }
 
 export type Permission = {

@@ -22,7 +22,7 @@ export class AuthController {
   @Post('select-tenant')
   @UseGuards(JwtAuthGuard)
   selectTenant(@Req() req: AuthenticatedRequest, @Body() dto: SelectTenantDto) {
-    return this.authService.selectTenant(req.user.id, dto.tenant_id);
+    return this.authService.selectTenant(req.user, dto.tenant_id);
   }
 
   @Post('register')
@@ -34,5 +34,11 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   getProfile(@Req() req: Express.Request) {
     return req.user;
+  }
+
+  @Get('tenants')
+  @UseGuards(JwtAuthGuard)
+  getTenants(@Req() req: AuthenticatedRequest) {
+    return this.authService.getUserTenants(req.user.id);
   }
 }

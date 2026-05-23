@@ -72,6 +72,7 @@ const {
   selectRole,
   saveRolePermissions,
   createCheckoutOrder,
+  updateOrderStatus,
   setProductPrice,
   logout,
 } = props.workspace
@@ -106,6 +107,11 @@ function viewTitle() {
   }
 
   return titles[activeView.value]
+}
+
+function tenantAccessLabel(tenantId: string) {
+  const access = session.tenants.find((tenant) => tenant.tenant_id === tenantId)
+  return access?.role ? `Role: ${access.role}` : 'Aktifkan tenant ini'
 }
 </script>
 
@@ -235,10 +241,6 @@ function viewTitle() {
               <Plus v-else class="h-4 w-4" />
               {{ editingTenantId ? 'Update' : 'Simpan' }}
             </button>
-            <button v-if="editingTenantId" class="secondary-action" type="button" @click="resetTenantForm">
-              <X class="h-4 w-4" />
-              Batal
-            </button>
           </div>
           <div class="mt-4 grid gap-4 lg:grid-cols-[1fr_220px]">
             <label class="grid gap-2 text-sm font-semibold text-slate-700">
@@ -253,6 +255,26 @@ function viewTitle() {
               Warna aksen
               <input v-model="tenantForm.storefront_accent_color" class="field-input h-12" type="color" />
             </label>
+          </div>
+          <div class="mt-4 grid gap-4 xl:grid-cols-3">
+            <label class="grid gap-2 text-sm font-semibold text-slate-700">
+              Logo URL
+              <input v-model="tenantForm.storefront_logo_url" class="field-input" type="url" />
+            </label>
+            <label class="grid gap-2 text-sm font-semibold text-slate-700">
+              Banner URL
+              <input v-model="tenantForm.storefront_banner_url" class="field-input" type="url" />
+            </label>
+            <label class="grid gap-2 text-sm font-semibold text-slate-700">
+              Tagline toko
+              <input v-model="tenantForm.storefront_tagline" class="field-input" type="text" />
+            </label>
+          </div>
+          <div v-if="editingTenantId" class="mt-5 border-t border-slate-200 pt-5">
+            <button class="secondary-action w-full sm:w-auto" type="button" @click="resetTenantForm">
+              <X class="h-4 w-4" />
+              Batal
+            </button>
           </div>
         </form>
         <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -277,6 +299,16 @@ function viewTitle() {
                   <td class="px-5 py-4 text-slate-600">/{{ tenant.domain || tenant.code }}</td>
                   <td class="px-5 py-4">
                     <div class="flex flex-wrap gap-2">
+                      <button
+                        class="secondary-action h-9 px-3"
+                        type="button"
+                        :disabled="loading || selectedTenant === tenant.id"
+                        :title="tenantAccessLabel(tenant.id)"
+                        @click="selectTenant(tenant.id)"
+                      >
+                        <CheckCircle2 class="h-4 w-4" />
+                        {{ selectedTenant === tenant.id ? 'Aktif' : 'Aktifkan' }}
+                      </button>
                       <button class="secondary-action h-9 px-3" type="button" @click="editTenant(tenant)">
                         <Edit3 class="h-4 w-4" />
                         Edit
@@ -330,7 +362,9 @@ function viewTitle() {
               <Plus v-else class="h-4 w-4" />
               {{ editingUserId ? 'Update' : 'Simpan' }}
             </button>
-            <button v-if="editingUserId" class="secondary-action" type="button" @click="resetUserForm">
+          </div>
+          <div v-if="editingUserId" class="mt-5 border-t border-slate-200 pt-5">
+            <button class="secondary-action w-full sm:w-auto" type="button" @click="resetUserForm">
               <X class="h-4 w-4" />
               Batal
             </button>
@@ -406,7 +440,9 @@ function viewTitle() {
                 <Plus v-else class="h-4 w-4" />
                 {{ editingRoleId ? 'Update role' : 'Simpan role' }}
               </button>
-              <button v-if="editingRoleId" class="secondary-action" type="button" @click="resetRoleForm">
+            </div>
+            <div v-if="editingRoleId" class="mt-5 border-t border-slate-200 pt-5">
+              <button class="secondary-action w-full" type="button" @click="resetRoleForm">
                 <X class="h-4 w-4" />
                 Batal
               </button>
@@ -517,10 +553,6 @@ function viewTitle() {
               <Plus v-else class="h-4 w-4" />
               {{ editingProductId ? 'Update' : 'Simpan' }}
             </button>
-            <button v-if="editingProductId" class="secondary-action" type="button" @click="resetProductForm">
-              <X class="h-4 w-4" />
-              Batal
-            </button>
           </div>
           <div class="mt-4 grid gap-4 xl:grid-cols-[0.7fr_1fr_1fr]">
             <label class="grid gap-2 text-sm font-semibold text-slate-700">
@@ -562,6 +594,12 @@ function viewTitle() {
             Deskripsi
             <textarea v-model="productForm.description" class="min-h-24 rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-950 shadow-sm outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-100" />
           </label>
+          <div v-if="editingProductId" class="mt-5 border-t border-slate-200 pt-5">
+            <button class="secondary-action w-full sm:w-auto" type="button" @click="resetProductForm">
+              <X class="h-4 w-4" />
+              Batal
+            </button>
+          </div>
         </form>
 
         <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -623,6 +661,7 @@ function viewTitle() {
                   <th class="px-5 py-3">Customer</th>
                   <th class="px-5 py-3">Total</th>
                   <th class="px-5 py-3">Status</th>
+                  <th class="px-5 py-3">Detail</th>
                 </tr>
               </thead>
               <tbody>
@@ -634,9 +673,18 @@ function viewTitle() {
                   </td>
                   <td class="px-5 py-4 text-slate-700">{{ formatCurrency(order.total_amount) }}</td>
                   <td class="px-5 py-4">
-                    <span class="rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700 ring-1 ring-cyan-200">
-                      {{ order.status }}
-                    </span>
+                    <select class="field-input h-10 min-w-40 text-sm" :value="order.status" @change="updateOrderStatus(order.id, ($event.target as HTMLSelectElement).value)">
+                      <option value="PENDING">PENDING</option>
+                      <option value="PAID">PAID</option>
+                      <option value="PROCESSING">PROCESSING</option>
+                      <option value="SHIPPED">SHIPPED</option>
+                      <option value="COMPLETED">COMPLETED</option>
+                      <option value="CANCELLED">CANCELLED</option>
+                    </select>
+                  </td>
+                  <td class="px-5 py-4 text-slate-600">
+                    <span class="block">{{ order.shipping_city || '-' }} {{ order.shipping_postal_code || '' }}</span>
+                    <span class="block text-xs text-slate-400">{{ order.shipping_method || 'No shipping' }} / {{ order.payment_method || 'No payment' }}</span>
                   </td>
                 </tr>
               </tbody>
@@ -720,6 +768,9 @@ function viewTitle() {
           </div>
         </form>
       </section>
+      <footer class="mt-8 border-t border-slate-200 py-6 text-center text-sm font-medium text-slate-500">
+        © 2026 Umbu Gammaliel
+      </footer>
     </section>
   </section>
 </template>

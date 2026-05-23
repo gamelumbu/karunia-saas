@@ -21,10 +21,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     @InjectRepository(Membership)
     private readonly membershipRepository: Repository<Membership>,
   ) {
+    const jwtSecret = configService.get<string>('JWT_SECRET');
+    if (!jwtSecret && configService.get<string>('NODE_ENV') === 'production') {
+      throw new Error('JWT_SECRET is required in production');
+    }
+
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKey:
-        configService.get<string>('JWT_SECRET') ?? 'karunia-local-dev-secret',
+      secretOrKey: jwtSecret ?? 'karunia-local-dev-secret',
     });
   }
 

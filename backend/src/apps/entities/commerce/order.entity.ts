@@ -50,6 +50,24 @@ export class Order {
   @Column({ type: 'text' })
   shipping_address: string;
 
+  @Column({ type: 'varchar', length: 120, nullable: true })
+  shipping_province?: string;
+
+  @Column({ type: 'varchar', length: 120, nullable: true })
+  shipping_city?: string;
+
+  @Column({ type: 'varchar', length: 120, nullable: true })
+  shipping_district?: string;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  shipping_postal_code?: string;
+
+  @Column({ type: 'varchar', length: 80, nullable: true })
+  shipping_method?: string;
+
+  @Column({ type: 'varchar', length: 80, nullable: true })
+  payment_method?: string;
+
   @Column({ type: 'numeric', precision: 14, scale: 2, default: 0 })
   total_amount: string;
 

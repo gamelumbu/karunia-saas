@@ -44,6 +44,9 @@ export function useWorkspace() {
     domain: '',
     storefront_template: 'market',
     storefront_accent_color: '#0891b2',
+    storefront_logo_url: '',
+    storefront_banner_url: '',
+    storefront_tagline: '',
   })
 
   const userForm = reactive({
@@ -94,7 +97,7 @@ export function useWorkspace() {
   }>({
     userId: localStorage.getItem('karunia_user_id') || '',
     email: localStorage.getItem('karunia_email') || '',
-    tenants: [],
+    tenants: loadStoredTenants(),
   })
 
   const tenants = ref<Tenant[]>([])
@@ -167,6 +170,7 @@ export function useWorkspace() {
     localStorage.setItem('karunia_user_id', session.userId)
     localStorage.setItem('karunia_email', session.email)
     localStorage.setItem('karunia_tenant_id', selectedTenant.value)
+    localStorage.setItem('karunia_tenants', JSON.stringify(session.tenants))
   }
 
   async function login() {
@@ -252,6 +256,7 @@ export function useWorkspace() {
     if (!accessToken.value) return
 
     error.value = ''
+    await loadSessionTenants()
 
     const [
       tenantResult,
@@ -270,6 +275,7 @@ export function useWorkspace() {
     ])
 
     tenants.value = tenantResult.data || []
+    mergeTenantOptions(tenants.value)
     users.value = userResult.data || []
     products.value = productResult.data || []
     orders.value = orderResult.data || []
@@ -279,6 +285,18 @@ export function useWorkspace() {
       selectRole(roles.value[0].id)
     }
     await loadStorefront()
+  }
+
+  async function loadSessionTenants() {
+    try {
+      const result = await request<{ tenants: TenantOption[] }>('/auth/tenants')
+      session.tenants = result.tenants || []
+      persistTenantOptions()
+    } catch {
+      if (!session.tenants.length) {
+        session.tenants = loadStoredTenants()
+      }
+    }
   }
 
   async function saveTenant() {
@@ -294,10 +312,13 @@ export function useWorkspace() {
         domain: tenantForm.domain || undefined,
         storefront_template: tenantForm.storefront_template,
         storefront_accent_color: tenantForm.storefront_accent_color,
+        storefront_logo_url: tenantForm.storefront_logo_url || undefined,
+        storefront_banner_url: tenantForm.storefront_banner_url || undefined,
+        storefront_tagline: tenantForm.storefront_tagline || undefined,
         active_status: 1,
       }
 
-      await request<ApiSingleResponse<Tenant>>(
+      const result = await request<ApiSingleResponse<Tenant>>(
         editingTenantId.value ? `/tenant/${editingTenantId.value}` : '/tenant',
         {
           method: editingTenantId.value ? 'PATCH' : 'POST',
@@ -305,10 +326,11 @@ export function useWorkspace() {
         },
       )
 
+      upsertTenantOption(result.data, isEditing ? undefined : 'OWNER')
       resetTenantForm()
       notice.value = isEditing
         ? 'Tenant berhasil diperbarui.'
-        : 'Tenant baru berhasil dibuat. Jika tenant belum muncul di pilihan, logout lalu login ulang.'
+        : 'Tenant baru berhasil dibuat dan bisa dipilih sebagai tenant aktif.'
       await loadWorkspace()
     } catch (err) {
       error.value = getMessage(err)
@@ -333,6 +355,9 @@ export function useWorkspace() {
     tenantForm.storefront_template = tenant.storefront_template || 'market'
     tenantForm.storefront_accent_color =
       tenant.storefront_accent_color || '#0891b2'
+    tenantForm.storefront_logo_url = tenant.storefront_logo_url || ''
+    tenantForm.storefront_banner_url = tenant.storefront_banner_url || ''
+    tenantForm.storefront_tagline = tenant.storefront_tagline || ''
   }
 
   function resetTenantForm() {
@@ -342,6 +367,9 @@ export function useWorkspace() {
     tenantForm.domain = ''
     tenantForm.storefront_template = 'market'
     tenantForm.storefront_accent_color = '#0891b2'
+    tenantForm.storefront_logo_url = ''
+    tenantForm.storefront_banner_url = ''
+    tenantForm.storefront_tagline = ''
   }
 
   async function deleteTenant(id: string) {
@@ -701,6 +729,25 @@ export function useWorkspace() {
     }
   }
 
+  async function updateOrderStatus(orderId: string, status: string) {
+    loading.value = true
+    error.value = ''
+    notice.value = ''
+
+    try {
+      await request<ApiSingleResponse<Order>>(`/order/${orderId}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      })
+      notice.value = 'Status order berhasil diperbarui.'
+      await loadWorkspace()
+    } catch (err) {
+      error.value = getMessage(err)
+    } finally {
+      loading.value = false
+    }
+  }
+
   function logout() {
     accessToken.value = ''
     selectedTenant.value = ''
@@ -718,10 +765,51 @@ export function useWorkspace() {
     localStorage.removeItem('karunia_tenant_id')
     localStorage.removeItem('karunia_user_id')
     localStorage.removeItem('karunia_email')
+    localStorage.removeItem('karunia_tenants')
   }
 
   function getMessage(err: unknown) {
     return err instanceof Error ? err.message : 'Terjadi kesalahan'
+  }
+
+  function loadStoredTenants(): TenantOption[] {
+    try {
+      const raw = localStorage.getItem('karunia_tenants')
+      if (!raw) return []
+      const parsed = JSON.parse(raw)
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  }
+
+  function persistTenantOptions() {
+    localStorage.setItem('karunia_tenants', JSON.stringify(session.tenants))
+  }
+
+  function upsertTenantOption(tenant: Tenant, role?: string) {
+    const existing = session.tenants.find((item) => item.tenant_id === tenant.id)
+
+    if (existing) {
+      existing.tenant_name = tenant.name
+      if (role) existing.role = role
+    } else {
+      session.tenants.push({
+        tenant_id: tenant.id,
+        tenant_name: tenant.name,
+        role,
+      })
+    }
+
+    persistTenantOptions()
+  }
+
+  function mergeTenantOptions(rows: Tenant[]) {
+    rows.forEach((tenant) => {
+      if (tenant.id === selectedTenant.value) {
+        upsertTenantOption(tenant)
+      }
+    })
   }
 
   function selectedTenantCode() {
@@ -803,6 +891,7 @@ export function useWorkspace() {
     saveRolePermissions,
     loadStorefront,
     createCheckoutOrder,
+    updateOrderStatus,
     setProductPrice,
     logout,
   }

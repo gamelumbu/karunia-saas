@@ -3,10 +3,12 @@ user;create;Create user
 user;read;Read user
 user;update;Update user
 user;delete;Delete user
+user;restore;Restore deleted user
 tenant;create;Create tenant
 tenant;read;Read tenant
 tenant;update;Update tenant
 tenant;delete;Delete tenant
+tenant;restore;Restore deleted tenant
 role;create;Create role
 role;read;Read role
 role;update;Update role

@@ -32,6 +32,15 @@ export class Tenant {
   @Column({ type: 'varchar', length: 20, default: '#0891b2' })
   storefront_accent_color: string;
 
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  storefront_logo_url?: string;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  storefront_banner_url?: string;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  storefront_tagline?: string;
+
   @Column({ type: 'int', default: StatusAktif.ACTIVE })
   active_status: StatusAktif;
 

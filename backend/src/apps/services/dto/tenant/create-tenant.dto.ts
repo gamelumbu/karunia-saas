@@ -6,6 +6,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUrl,
   Matches,
   MaxLength,
 } from 'class-validator';
@@ -43,6 +44,24 @@ export class CreateTenantDto {
   @IsHexColor()
   @ApiPropertyOptional({ example: '#0891b2' })
   storefront_accent_color?: string;
+
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  @MaxLength(500)
+  @ApiPropertyOptional({ example: 'https://example.com/logo.png' })
+  storefront_logo_url?: string;
+
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  @MaxLength(500)
+  @ApiPropertyOptional({ example: 'https://example.com/banner.jpg' })
+  storefront_banner_url?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  @ApiPropertyOptional({ example: 'Toko sepatu pilihan untuk setiap hari.' })
+  storefront_tagline?: string;
 
   @Transform(({ value }: { value: unknown }) => {
     if (typeof value === 'string') {

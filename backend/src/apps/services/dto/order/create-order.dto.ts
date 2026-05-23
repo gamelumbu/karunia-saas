@@ -48,6 +48,42 @@ export class CreateOrderDto {
   @IsString()
   shipping_address: string;
 
+  @ApiPropertyOptional({ example: 'DKI Jakarta' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  shipping_province?: string;
+
+  @ApiPropertyOptional({ example: 'Jakarta Selatan' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  shipping_city?: string;
+
+  @ApiPropertyOptional({ example: 'Kebayoran Baru' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  shipping_district?: string;
+
+  @ApiPropertyOptional({ example: '12110' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  shipping_postal_code?: string;
+
+  @ApiPropertyOptional({ example: 'REGULER' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  shipping_method?: string;
+
+  @ApiPropertyOptional({ example: 'COD' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  payment_method?: string;
+
   @ApiProperty({ type: [CreateOrderItemDto] })
   @IsArray()
   @ArrayMinSize(1)

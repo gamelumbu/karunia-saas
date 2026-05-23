@@ -110,6 +110,12 @@ export class OrderService {
         customer_email: dto.customer_email,
         customer_phone: dto.customer_phone,
         shipping_address: dto.shipping_address,
+        shipping_province: dto.shipping_province,
+        shipping_city: dto.shipping_city,
+        shipping_district: dto.shipping_district,
+        shipping_postal_code: dto.shipping_postal_code,
+        shipping_method: dto.shipping_method,
+        payment_method: dto.payment_method,
         total_amount: total.toFixed(2),
         status: OrderStatus.PENDING,
         items,
@@ -123,6 +129,22 @@ export class OrderService {
     const order = await this.findOne(id);
     order.status = status;
     return this.orderRepo.save(order);
+  }
+
+  async trackPublic(orderNumber: string, email: string): Promise<Order> {
+    const order = await this.orderRepo.findOne({
+      where: {
+        order_number: orderNumber,
+        customer_email: email,
+      },
+      relations: ['items'],
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    return order;
   }
 
   private createOrderNumber(): string {

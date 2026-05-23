@@ -33,6 +33,52 @@ export class StorefrontService {
     return qb.getMany();
   }
 
+  async findAllStores() {
+    const stores = await this.findStores();
+    const storeIds = stores.map((store) => store.id);
+
+    if (!storeIds.length) {
+      return {
+        store: {
+          id: 'all',
+          name: 'Semua toko',
+          code: 'all',
+          domain: 'all',
+          storefront_template: 'market',
+          storefront_accent_color: '#111827',
+          active_status: StatusAktif.ACTIVE,
+        },
+        products: [],
+        stores,
+      };
+    }
+
+    const products = await this.productRepo
+      .createQueryBuilder('product')
+      .where('product.active_status = :active', {
+        active: StatusAktif.ACTIVE,
+      })
+      .andWhere('product.tenant_id IN (:...storeIds)', { storeIds })
+      .orderBy('product.created_at', 'DESC')
+      .getMany();
+
+    return {
+      store: {
+        id: 'all',
+        name: 'Semua toko',
+        code: 'all',
+        domain: 'all',
+        storefront_template: 'market',
+        storefront_accent_color: '#111827',
+        storefront_tagline:
+          'Belanja produk dari semua toko aktif dalam satu katalog.',
+        active_status: StatusAktif.ACTIVE,
+      },
+      products,
+      stores,
+    };
+  }
+
   async findStore(slug: string) {
     const store = await this.tenantRepo.findOne({
       where: [
