@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Heart, Menu, ShoppingBag } from '@lucide/vue'
+import { Heart, Menu, ShoppingBag, Store } from '@lucide/vue'
 import type { Storefront, Tenant } from '../../types'
 import type { NavItem } from './types'
 
@@ -28,6 +28,9 @@ function tenantSlug(store: Tenant) {
 const isAllStores = computed(() => props.storeSlug === 'marketplace')
 const selectedStoreValue = computed(() =>
   isAllStores.value ? '__all__' : props.storeSlug,
+)
+const primaryNavItems = computed(() =>
+  props.navItems.filter((item) => !['Wishlist', 'Checkout'].includes(item.label)),
 )
 </script>
 
@@ -67,24 +70,23 @@ const selectedStoreValue = computed(() =>
       </label>
 
       <nav class="hidden items-center gap-7 text-sm font-black uppercase tracking-wide text-zinc-600 lg:flex">
-        <a v-for="item in navItems" :key="item.href" :href="item.href" class="border-b-2 border-transparent py-2 transition hover:border-zinc-950 hover:text-zinc-950">
+        <a v-for="item in primaryNavItems" :key="item.href" :href="item.href" class="border-b-2 border-transparent py-2 transition hover:border-zinc-950 hover:text-zinc-950">
           {{ item.label }}
         </a>
-        <a v-if="showAdminLink" href="/login-tenant" class="border-b-2 border-transparent py-2 transition hover:border-zinc-950 hover:text-zinc-950">Dashboard</a>
-        <a v-else-if="showTenantLoginLink" href="/login-tenant" class="border-b-2 border-transparent py-2 transition hover:border-zinc-950 hover:text-zinc-950">Login tenant</a>
       </nav>
 
       <div class="flex items-center gap-2">
         <a
           v-if="showTenantLoginLink"
-          class="hidden h-11 items-center justify-center border border-zinc-200 bg-white px-4 text-xs font-black uppercase tracking-wide text-zinc-700 shadow-sm transition hover:border-zinc-400 sm:inline-flex lg:hidden"
+          class="inline-flex h-11 items-center justify-center gap-2 border border-zinc-950 bg-zinc-950 px-4 text-xs font-black uppercase tracking-wide text-white shadow-sm transition hover:bg-zinc-800"
           href="/login-tenant"
         >
-          Login
+          <Store class="h-4 w-4" />
+          Buat Toko
         </a>
         <a
           v-if="showAdminLink"
-          class="hidden h-11 items-center justify-center border border-zinc-200 bg-white px-4 text-xs font-black uppercase tracking-wide text-zinc-700 shadow-sm transition hover:border-zinc-400 sm:inline-flex lg:hidden"
+          class="inline-flex h-11 items-center justify-center border border-zinc-950 bg-zinc-950 px-4 text-xs font-black uppercase tracking-wide text-white shadow-sm transition hover:bg-zinc-800"
           href="/login-tenant"
         >
           Dashboard

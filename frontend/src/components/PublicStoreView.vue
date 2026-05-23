@@ -5,6 +5,7 @@ import { apiRequest } from '../services/api'
 import type { ApiListResponse, ApiSingleResponse, Order, Product, Storefront, Tenant } from '../types'
 import PublicStoreCatalog from './public-store/PublicStoreCatalog.vue'
 import PublicStoreCheckout from './public-store/PublicStoreCheckout.vue'
+import PublicStoreFooter from './public-store/PublicStoreFooter.vue'
 import PublicStoreHeader from './public-store/PublicStoreHeader.vue'
 import PublicStoreHero from './public-store/PublicStoreHero.vue'
 import PublicStoreHome from './public-store/PublicStoreHome.vue'
@@ -550,9 +551,15 @@ function initials(value: string) {
         @track-order="trackOrder"
       />
 
-      <footer class="border-t border-zinc-200 px-4 py-8 text-center text-sm font-semibold text-zinc-500 sm:px-6 lg:px-8">
-        © 2026 Umbu Gammaliel
-      </footer>
+      <PublicStoreFooter
+        :storefront="storefront"
+        :store-slug="storeSlug"
+        :nav-items="navItems"
+        :accent="accent"
+        :products-count="allProducts.length"
+        :stores-count="isAllStores ? publicStores.length : 1"
+        :initials="initials"
+      />
     </template>
   </main>
 </template>
