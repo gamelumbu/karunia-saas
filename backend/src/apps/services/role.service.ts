@@ -41,6 +41,8 @@ export class RoleService {
 
   async create(dto: CreateRoleDto): Promise<Role> {
     const tenantId = RequestContextService.getTenantId();
+    this.ensureCanManageSuperAdminRole(dto.name);
+
     const existing = await this.roleRepo.findOne({
       where: { tenant_id: tenantId, name: dto.name },
     });
@@ -60,8 +62,11 @@ export class RoleService {
   async update(roleId: string, dto: UpdateRoleDto): Promise<Role> {
     const tenantId = RequestContextService.getTenantId();
     const role = await this.findTenantRoleOrFail(roleId, tenantId);
+    this.ensureCanManageSuperAdminRole(role.name);
 
     if (dto.name && dto.name !== role.name) {
+      this.ensureCanManageSuperAdminRole(dto.name);
+
       const existing = await this.roleRepo.findOne({
         where: { tenant_id: tenantId, name: dto.name },
       });
@@ -82,7 +87,8 @@ export class RoleService {
 
   async remove(roleId: string): Promise<void> {
     const tenantId = RequestContextService.getTenantId();
-    await this.findTenantRoleOrFail(roleId, tenantId);
+    const role = await this.findTenantRoleOrFail(roleId, tenantId);
+    this.ensureCanManageSuperAdminRole(role.name);
 
     const membershipCount = await this.roleRepo.manager.count(Membership, {
       where: { role_id: roleId },
@@ -103,7 +109,8 @@ export class RoleService {
     dto: SetRolePermissionsDto,
   ): Promise<Role> {
     const tenantId = RequestContextService.getTenantId();
-    await this.findTenantRoleOrFail(roleId, tenantId);
+    const role = await this.findTenantRoleOrFail(roleId, tenantId);
+    this.ensureCanManageSuperAdminRole(role.name);
 
     const permissions = dto.permission_ids.length
       ? await this.permissionRepo.find({
@@ -155,5 +162,25 @@ export class RoleService {
     }
 
     return role;
+  }
+
+  private ensureCanManageSuperAdminRole(roleName?: string) {
+    if (
+      this.isSuperAdminRoleName(roleName) &&
+      !RequestContextService.isSuperAdmin()
+    ) {
+      throw new BadRequestException(
+        'Only SUPER_ADMIN can manage SUPER_ADMIN role',
+      );
+    }
+  }
+
+  private isSuperAdminRoleName(roleName?: string) {
+    return (
+      roleName
+        ?.trim()
+        .toUpperCase()
+        .replace(/[\s-]+/g, '_') === 'SUPER_ADMIN'
+    );
   }
 }

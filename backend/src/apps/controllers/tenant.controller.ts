@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -10,8 +11,12 @@ import {
   Patch,
   Post,
   Query,
+  Req,
+  UploadedFile,
+  UseInterceptors,
   UseGuards,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { TenantService } from '../services/tenant.service';
 import { CreateTenantDto } from '../services/dto/tenant/create-tenant.dto';
 import { JwtAuthGuard } from '@/common/guard/jwt.guard';
@@ -22,6 +27,27 @@ import { Tenant } from '../entities/master/tenant.entity';
 import { PaginatedTenantResponseDto } from '../services/dto/tenant/pagination-response.dto';
 import { UpdateTenantDto } from '../services/dto/tenant/update-tenant.dto';
 import { TenantTypeFilter } from '@/common/enum/TenantTypeFilter';
+import { existsSync, mkdirSync } from 'fs';
+import { extname, join } from 'path';
+import type { Request } from 'express';
+
+const { diskStorage } = require('multer') as {
+  diskStorage: (options: Record<string, unknown>) => unknown;
+};
+
+const tenantUploadDir = join(process.cwd(), 'uploads', 'tenants');
+
+type UploadedTenantFile = {
+  filename: string;
+  originalname: string;
+  mimetype: string;
+};
+
+function ensureTenantUploadDir() {
+  if (!existsSync(tenantUploadDir)) {
+    mkdirSync(tenantUploadDir, { recursive: true });
+  }
+}
 
 @UseGuards(JwtAuthGuard, PermissionGuard)
 @Controller('tenant')
@@ -68,6 +94,70 @@ export class TenantController {
       success: true,
       message: 'Tenant created successfully',
       data: newTenant,
+    };
+  }
+
+  @Post('uploads/:type')
+  @Permissions('tenant.update')
+  @UseInterceptors(
+    FileInterceptor('image', {
+      storage: diskStorage({
+        destination: (_req, _file, callback) => {
+          ensureTenantUploadDir();
+          callback(null, tenantUploadDir);
+        },
+        filename: (req, file, callback) => {
+          const type = ['logo', 'banner'].includes(req.params.type)
+            ? req.params.type
+            : 'asset';
+          const safeName = file.originalname
+            .replace(extname(file.originalname), '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '')
+            .slice(0, 60);
+          callback(
+            null,
+            `${Date.now()}-${type}-${Math.random().toString(36).slice(2, 10)}-${safeName}${extname(file.originalname).toLowerCase()}`,
+          );
+        },
+      }),
+      limits: {
+        fileSize: 5 * 1024 * 1024,
+      },
+      fileFilter: (_req, file, callback) => {
+        if (!file.mimetype.startsWith('image/')) {
+          callback(
+            new BadRequestException('Only image files are allowed'),
+            false,
+          );
+          return;
+        }
+        callback(null, true);
+      },
+    }),
+  )
+  async uploadStorefrontAsset(
+    @Param('type') type: string,
+    @UploadedFile() file: UploadedTenantFile,
+    @Req() request: Request,
+  ) {
+    if (!['logo', 'banner'].includes(type)) {
+      throw new BadRequestException('Upload type must be logo or banner');
+    }
+    if (!file) {
+      throw new BadRequestException('Image file is required');
+    }
+
+    const baseUrl = `${request.protocol}://${request.get('host')}`;
+    return {
+      success: true,
+      message: 'Tenant image uploaded successfully',
+      data: {
+        url: `${baseUrl}/uploads/tenants/${file.filename}`,
+        filename: file.filename,
+        type,
+      },
     };
   }
 

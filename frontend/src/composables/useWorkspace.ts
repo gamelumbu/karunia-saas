@@ -108,6 +108,9 @@ export function useWorkspace() {
   const roles = ref<Role[]>([])
   const permissions = ref<Permission[]>([])
   const storefront = ref<Storefront | null>(null)
+  const manageableRoles = computed(() =>
+    roles.value.filter((role) => !isSuperAdminRoleName(role.name)),
+  )
 
   const isAuthenticated = computed(() => Boolean(accessToken.value))
   const selectedTenantName = computed(() => {
@@ -282,8 +285,19 @@ export function useWorkspace() {
     orders.value = orderResult.data || []
     roles.value = roleResult.data || []
     permissions.value = permissionResult.data || []
-    if (!selectedRoleId.value && roles.value[0]) {
-      selectRole(roles.value[0].id)
+    if (
+      !selectedRoleId.value ||
+      roles.value.some(
+        (role) => role.id === selectedRoleId.value && isSuperAdminRoleName(role.name),
+      )
+    ) {
+      const firstManageableRole = manageableRoles.value[0]
+      if (firstManageableRole) {
+        selectRole(firstManageableRole.id)
+      } else {
+        selectedRoleId.value = ''
+        selectedPermissionIds.value = []
+      }
     }
     await loadStorefront()
   }
@@ -333,6 +347,41 @@ export function useWorkspace() {
         ? 'Tenant berhasil diperbarui.'
         : 'Tenant baru berhasil dibuat dan bisa dipilih sebagai tenant aktif.'
       await loadWorkspace()
+    } catch (err) {
+      error.value = getMessage(err)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function uploadTenantImage(type: 'logo' | 'banner', files: FileList | File[]) {
+    const image = Array.from(files).find((file) => file.type.startsWith('image/'))
+    if (!image) return
+
+    loading.value = true
+    error.value = ''
+    notice.value = ''
+
+    try {
+      const formData = new FormData()
+      formData.append('image', image)
+      const result = await request<ApiSingleResponse<{ url: string }>>(
+        `/tenant/uploads/${type}`,
+        {
+          method: 'POST',
+          body: formData,
+        },
+      )
+
+      if (type === 'logo') {
+        tenantForm.storefront_logo_url = result.data.url
+      } else {
+        tenantForm.storefront_banner_url = result.data.url
+      }
+      notice.value =
+        type === 'logo'
+          ? 'Logo toko berhasil diupload.'
+          : 'Banner toko berhasil diupload.'
     } catch (err) {
       error.value = getMessage(err)
     } finally {
@@ -622,6 +671,11 @@ export function useWorkspace() {
   }
 
   async function saveRole() {
+    if (isSuperAdminRoleName(roleForm.name)) {
+      error.value = 'Role SUPER_ADMIN hanya bisa diatur langsung dari database.'
+      return
+    }
+
     loading.value = true
     error.value = ''
     notice.value = ''
@@ -661,6 +715,8 @@ export function useWorkspace() {
   }
 
   function editRole(role: Role) {
+    if (isSuperAdminRoleName(role.name)) return
+
     editingRoleId.value = role.id
     roleForm.name = role.name
     roleForm.description = role.description || ''
@@ -696,8 +752,14 @@ export function useWorkspace() {
   }
 
   function selectRole(roleId: string) {
-    selectedRoleId.value = roleId
     const role = roles.value.find((item) => item.id === roleId)
+    if (!role || isSuperAdminRoleName(role.name)) {
+      selectedRoleId.value = ''
+      selectedPermissionIds.value = []
+      return
+    }
+
+    selectedRoleId.value = roleId
     selectedPermissionIds.value =
       role?.role_permissions?.map((item) => item.permission_id) || []
   }
@@ -825,6 +887,10 @@ export function useWorkspace() {
     return err instanceof Error ? err.message : 'Terjadi kesalahan'
   }
 
+  function isSuperAdminRoleName(roleName?: string) {
+    return roleName?.trim().toUpperCase().replace(/[\s-]+/g, '_') === 'SUPER_ADMIN'
+  }
+
   function loadStoredTenants(): TenantOption[] {
     try {
       const raw = localStorage.getItem('karunia_tenants')
@@ -910,6 +976,7 @@ export function useWorkspace() {
     products,
     orders,
     roles,
+    manageableRoles,
     permissions,
     storefront,
     isAuthenticated,
@@ -925,6 +992,7 @@ export function useWorkspace() {
     editTenant,
     resetTenantForm,
     deleteTenant,
+    uploadTenantImage,
     createUser,
     updateUser,
     editUser,

@@ -45,7 +45,7 @@ const {
   users,
   products,
   orders,
-  roles,
+  manageableRoles,
   permissions,
   storefront,
   selectedTenantName,
@@ -57,6 +57,7 @@ const {
   editTenant,
   resetTenantForm,
   deleteTenant,
+  uploadTenantImage,
   createUser,
   editUser,
   resetUserForm,
@@ -115,6 +116,11 @@ function viewTitle() {
 function tenantAccessLabel(tenantId: string) {
   const access = session.tenants.find((tenant) => tenant.tenant_id === tenantId)
   return access?.role ? `Role: ${access.role}` : 'Aktifkan tenant ini'
+}
+
+function setRoleName(value: string) {
+  const normalized = value.toUpperCase()
+  roleForm.name = normalized === 'SUPER_ADMIN' ? '' : normalized
 }
 </script>
 
@@ -260,14 +266,34 @@ function tenantAccessLabel(tenantId: string) {
             </label>
           </div>
           <div class="mt-4 grid gap-4 xl:grid-cols-3">
-            <label class="grid gap-2 text-sm font-semibold text-slate-700">
-              Logo URL
-              <input v-model="tenantForm.storefront_logo_url" class="field-input" type="url" />
-            </label>
-            <label class="grid gap-2 text-sm font-semibold text-slate-700">
-              Banner URL
-              <input v-model="tenantForm.storefront_banner_url" class="field-input" type="url" />
-            </label>
+            <div class="grid gap-2 text-sm font-semibold text-slate-700">
+              Logo toko
+              <label class="grid min-h-12 cursor-pointer place-items-center rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-center text-sm font-semibold text-slate-600 transition hover:border-cyan-500 hover:bg-cyan-50">
+                Upload logo
+                <input
+                  class="sr-only"
+                  type="file"
+                  accept="image/*"
+                  :disabled="loading"
+                  @change="uploadTenantImage('logo', ($event.target as HTMLInputElement).files || [])"
+                />
+              </label>
+              <img v-if="tenantForm.storefront_logo_url" :src="tenantForm.storefront_logo_url" alt="Logo toko" class="h-16 w-16 rounded-xl border border-slate-200 object-cover" />
+            </div>
+            <div class="grid gap-2 text-sm font-semibold text-slate-700">
+              Banner toko
+              <label class="grid min-h-12 cursor-pointer place-items-center rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-center text-sm font-semibold text-slate-600 transition hover:border-cyan-500 hover:bg-cyan-50">
+                Upload banner
+                <input
+                  class="sr-only"
+                  type="file"
+                  accept="image/*"
+                  :disabled="loading"
+                  @change="uploadTenantImage('banner', ($event.target as HTMLInputElement).files || [])"
+                />
+              </label>
+              <img v-if="tenantForm.storefront_banner_url" :src="tenantForm.storefront_banner_url" alt="Banner toko" class="h-16 w-full rounded-xl border border-slate-200 object-cover" />
+            </div>
             <label class="grid gap-2 text-sm font-semibold text-slate-700">
               Tagline toko
               <input v-model="tenantForm.storefront_tagline" class="field-input" type="text" />
@@ -355,7 +381,7 @@ function tenantAccessLabel(tenantId: string) {
               Role
               <select v-model="userForm.role_name" class="field-input">
                 <option value="">Default USER</option>
-                <option v-for="role in roles" :key="role.id" :value="role.name">
+                <option v-for="role in manageableRoles" :key="role.id" :value="role.name">
                   {{ role.name }}
                 </option>
               </select>
@@ -431,7 +457,7 @@ function tenantAccessLabel(tenantId: string) {
                   type="text"
                   placeholder="PRODUCT_ADMIN"
                   required
-                  @input="roleForm.name = ($event.target as HTMLInputElement).value.toUpperCase()"
+                  @input="setRoleName(($event.target as HTMLInputElement).value)"
                 />
               </label>
               <label class="grid gap-2 text-sm font-semibold text-slate-700">
@@ -456,7 +482,7 @@ function tenantAccessLabel(tenantId: string) {
             <h2 class="text-lg font-semibold">Role toko</h2>
             <div class="mt-4 grid gap-2">
               <button
-                v-for="role in roles"
+                v-for="role in manageableRoles"
                 :key="role.id"
                 class="rounded-xl border px-4 py-3 text-left text-sm transition"
                 :class="selectedRoleId === role.id ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'"

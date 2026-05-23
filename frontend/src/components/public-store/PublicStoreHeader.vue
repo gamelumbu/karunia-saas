@@ -32,6 +32,17 @@ const selectedStoreValue = computed(() =>
 const primaryNavItems = computed(() =>
   props.navItems.filter((item) => !['Wishlist', 'Checkout'].includes(item.label)),
 )
+
+function normalizePath(path: string) {
+  return path.replace(/\/$/, '') || '/'
+}
+
+function isActiveNav(href: string) {
+  const currentPath = normalizePath(window.location.pathname)
+  const targetPath = normalizePath(href)
+
+  return currentPath === targetPath
+}
 </script>
 
 <template>
@@ -70,7 +81,13 @@ const primaryNavItems = computed(() =>
       </label>
 
       <nav class="hidden items-center gap-7 text-sm font-black uppercase tracking-wide text-zinc-600 lg:flex">
-        <a v-for="item in primaryNavItems" :key="item.href" :href="item.href" class="border-b-2 border-transparent py-2 transition hover:border-zinc-950 hover:text-zinc-950">
+        <a
+          v-for="item in primaryNavItems"
+          :key="item.href"
+          :href="item.href"
+          class="border-b-2 py-2 transition hover:border-zinc-950 hover:text-zinc-950"
+          :class="isActiveNav(item.href) ? 'border-zinc-950 text-zinc-950' : 'border-transparent'"
+        >
           {{ item.label }}
         </a>
       </nav>

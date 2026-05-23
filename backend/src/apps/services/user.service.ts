@@ -140,6 +140,7 @@ export class UserService {
 
   async create(createUser: CreateUserDto): Promise<User> {
     const { username, email, password, role_name } = createUser;
+    this.ensureCanAssignSuperAdminRole(role_name);
 
     await this.validateUniqueUsernameEmail(username, email);
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -224,6 +225,8 @@ export class UserService {
     tenantId: string,
     roleName: string,
   ): Promise<Role> {
+    this.ensureCanAssignSuperAdminRole(roleName);
+
     const role = await manager
       .createQueryBuilder(Role, 'role')
       .where('role.tenant_id = :tenantId', { tenantId })
@@ -241,6 +244,7 @@ export class UserService {
 
   async update(id: string, updateUser: UpdateUserDto): Promise<User> {
     const isSuperAdmin = RequestContextService.isSuperAdmin();
+    this.ensureCanAssignSuperAdminRole(updateUser.role_name);
 
     const user = await this.findUserOrFail(id);
     if (updateUser.username) {
@@ -335,5 +339,25 @@ export class UserService {
     }
 
     await this.userRepo.delete(user.id);
+  }
+
+  private ensureCanAssignSuperAdminRole(roleName?: string) {
+    if (
+      this.isSuperAdminRoleName(roleName) &&
+      !RequestContextService.isSuperAdmin()
+    ) {
+      throw new BadRequestException(
+        'Only SUPER_ADMIN can assign SUPER_ADMIN role',
+      );
+    }
+  }
+
+  private isSuperAdminRoleName(roleName?: string) {
+    return (
+      roleName
+        ?.trim()
+        .toUpperCase()
+        .replace(/[\s-]+/g, '_') === 'SUPER_ADMIN'
+    );
   }
 }
