@@ -1,5 +1,5 @@
 import { computed, reactive, ref } from 'vue'
-import { Building2, Package, ReceiptText, Server, UsersRound } from '@lucide/vue'
+import { Building2, Package, ReceiptText, UsersRound } from '@lucide/vue'
 import { apiBaseUrl, apiRequest } from '../services/api'
 import type {
   ActiveView,
@@ -16,6 +16,8 @@ import type {
   TenantOption,
   User,
 } from '../types'
+
+const maxUploadFileSize = 5 * 1024 * 1024
 
 export function useWorkspace() {
   const activeView = ref<ActiveView>('overview')
@@ -145,12 +147,12 @@ export function useWorkspace() {
       detail: 'Order masuk toko aktif',
       icon: ReceiptText,
     },
-    {
-      label: 'Endpoint',
-      value: apiBaseUrl.replace(/^https?:\/\//, ''),
-      detail: 'VITE_API_BASE_URL',
-      icon: Server,
-    },
+    // {
+    //   label: 'Endpoint',
+    //   value: apiBaseUrl.replace(/^https?:\/\//, ''),
+    //   detail: 'VITE_API_BASE_URL',
+    //   icon: Server,
+    // },
   ])
 
   async function request<T>(path: string, options: RequestInit = {}) {
@@ -357,6 +359,11 @@ export function useWorkspace() {
   async function uploadTenantImage(type: 'logo' | 'banner', files: FileList | File[]) {
     const image = Array.from(files).find((file) => file.type.startsWith('image/'))
     if (!image) return
+
+    if (isFileTooLarge(image)) {
+      showMaxFileSizeError(image.name)
+      return
+    }
 
     loading.value = true
     error.value = ''
@@ -612,6 +619,11 @@ export function useWorkspace() {
       file.type.startsWith('image/'),
     )
     if (!imageFiles.length) return
+    const oversizedFile = imageFiles.find(isFileTooLarge)
+    if (oversizedFile) {
+      showMaxFileSizeError(oversizedFile.name)
+      return
+    }
 
     loading.value = true
     error.value = ''
@@ -885,6 +897,15 @@ export function useWorkspace() {
 
   function getMessage(err: unknown) {
     return err instanceof Error ? err.message : 'Terjadi kesalahan'
+  }
+
+  function isFileTooLarge(file: File) {
+    return file.size > maxUploadFileSize
+  }
+
+  function showMaxFileSizeError(fileName: string) {
+    notice.value = ''
+    error.value = `File "${fileName}" terlalu besar. Maksimal ukuran file gambar adalah 5 MB.`
   }
 
   function isSuperAdminRoleName(roleName?: string) {

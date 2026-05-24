@@ -2,6 +2,7 @@
 import {
   Building2,
   CheckCircle2,
+  CircleAlert,
   Edit3,
   LayoutDashboard,
   LogOut,
@@ -50,7 +51,6 @@ const {
   storefront,
   selectedTenantName,
   stats,
-  apiBaseUrl,
   selectTenant,
   loadWorkspace,
   createTenant,
@@ -122,6 +122,11 @@ function setRoleName(value: string) {
   const normalized = value.toUpperCase()
   roleForm.name = normalized === 'SUPER_ADMIN' ? '' : normalized
 }
+
+function closeAlert() {
+  notice.value = ''
+  error.value = ''
+}
 </script>
 
 <template>
@@ -165,7 +170,6 @@ function setRoleName(value: string) {
             <h1 class="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
               {{ viewTitle() }}
             </h1>
-            <p class="mt-2 text-sm text-slate-500">API aktif: {{ apiBaseUrl }}</p>
           </div>
           <div class="flex flex-wrap gap-2">
             <button class="secondary-action h-11" type="button" :disabled="loading" @click="loadWorkspace">
@@ -180,13 +184,35 @@ function setRoleName(value: string) {
         </div>
       </header>
 
-      <div v-if="notice" class="mt-4 flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
-        <CheckCircle2 class="mt-0.5 h-4 w-4 shrink-0" />
-        {{ notice }}
-      </div>
-      <div v-if="error" class="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
-        {{ error }}
-      </div>
+      <Teleport to="body">
+        <div v-if="notice || error" class="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 px-4 backdrop-blur-sm">
+          <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <div class="flex items-start gap-4">
+              <span
+                class="grid h-11 w-11 shrink-0 place-items-center rounded-full"
+                :class="notice ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'"
+              >
+                <CheckCircle2 v-if="notice" class="h-5 w-5" />
+                <CircleAlert v-else class="h-5 w-5" />
+              </span>
+              <div class="min-w-0 flex-1">
+                <h2 class="text-lg font-semibold text-slate-950">
+                  {{ notice ? 'Berhasil' : 'Terjadi kesalahan' }}
+                </h2>
+                <p class="mt-2 text-sm leading-6 text-slate-600">
+                  {{ notice || error }}
+                </p>
+              </div>
+              <button class="grid h-9 w-9 shrink-0 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" type="button" aria-label="Tutup notifikasi" @click="closeAlert">
+                <X class="h-4 w-4" />
+              </button>
+            </div>
+            <button class="primary-action mt-6 w-full" type="button" @click="closeAlert">
+              Tutup
+            </button>
+          </div>
+        </div>
+      </Teleport>
 
       <section class="mt-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <label class="grid gap-2 text-sm font-semibold text-slate-700">
@@ -205,7 +231,7 @@ function setRoleName(value: string) {
         </label>
       </section>
 
-      <section v-if="activeView === 'overview'" class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <section v-if="activeView === 'overview'" class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <article v-for="item in stats" :key="item.label" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div class="flex items-center justify-between gap-4">
             <span class="text-sm font-semibold text-slate-600">{{ item.label }}</span>
